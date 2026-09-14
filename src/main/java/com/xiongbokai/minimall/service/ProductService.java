@@ -7,46 +7,54 @@ import com.xiongbokai.minimall.dto.request.ProductPatchRequest;
 import com.xiongbokai.minimall.dto.request.ProductUpdateRequest;
 import com.xiongbokai.minimall.dto.response.ProductResponse;
 import com.xiongbokai.minimall.exception.ProductNotFoundException;
+import com.xiongbokai.minimall.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
+//import java.util.concurrent.CopyOnWriteArrayList;
+//import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class ProductService {
 
-    private final List<Product> products = new CopyOnWriteArrayList<>(
-            List.of(
-                    new Product(
-                            1L,
-                            "机械键盘",
-                            new BigDecimal("399.00"),
-                            ProductStatus.ON_SALE
-                    ),
-                    new Product(
-                            2L,
-                            "无线鼠标",
-                            new BigDecimal("129.00"),
-                            ProductStatus.OUT_OF_STOCK
-                    ),
-                    new Product(
-                            3L,
-                            "显示器支架",
-                            new BigDecimal("259.00"),
-                            ProductStatus.OFF_SHELF
-                    )
-            )
-    );
+//    private final List<Product> products = new CopyOnWriteArrayList<>(
+//            List.of(
+//                    new Product(
+//                            1L,
+//                            "机械键盘",
+//                            new BigDecimal("399.00"),
+//                            ProductStatus.ON_SALE
+//                    ),
+//                    new Product(
+//                            2L,
+//                            "无线鼠标",
+//                            new BigDecimal("129.00"),
+//                            ProductStatus.OUT_OF_STOCK
+//                    ),
+//                    new Product(
+//                            3L,
+//                            "显示器支架",
+//                            new BigDecimal("259.00"),
+//                            ProductStatus.OFF_SHELF
+//                    )
+//            )
+//    );
+//
+//    private final AtomicLong idGenerator = new AtomicLong(3L);
 
-    private final AtomicLong idGenerator = new AtomicLong(3L);
+    private final ProductRepository productRepository;
+
+    public ProductService(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
 
     public List<ProductResponse> list(
             String keyword,
             ProductStatus status
     ) {
-        return products.stream()
+        return productRepository.findAll()
+                .stream()
                 .filter(product ->
                         keyword == null
                                 || keyword.isBlank()
@@ -76,18 +84,22 @@ public class ProductService {
     };
 
     public  ProductResponse create(ProductCreateRequest request) {
-        Long id = idGenerator.incrementAndGet();
+//        Long id = idGenerator.incrementAndGet();
 
         Product product = new Product(
-                id,
+//                id,
+                null,
                 request.name(),
                 request.price(),
                 ProductStatus.ON_SALE
         );
 
-        products.add(product);
+//        products.add(product);
 
-        return toResponse(product);
+        Product savedProduct = productRepository.save(product);
+
+//        return toResponse(product);
+        return toResponse(savedProduct);
     }
 
     public ProductResponse update(
@@ -103,10 +115,13 @@ public class ProductService {
                 request.status()
         );
 
-        int index = products.indexOf(existingProduct);
-        products.set(index, updatedProduct);
+//        int index = products.indexOf(existingProduct);
+//        products.set(index, updatedProduct);
 
-        return toResponse(updatedProduct);
+        Product savedProduct = productRepository.save(updatedProduct);
+
+//        return toResponse(updatedProduct);
+        return toResponse(savedProduct);
     }
 
     public ProductResponse patch(
@@ -134,22 +149,29 @@ public class ProductService {
                 newStatus
         );
 
-        int index = products.indexOf(existingProduct);
-        products.set(index, updatedProduct);
+//        int index = products.indexOf(existingProduct);
+//        products.set(index, updatedProduct);
 
-        return toResponse(updatedProduct);
+        Product savedProduct = productRepository.save(updatedProduct);
+
+//        return toResponse(updatedProduct);
+        return toResponse(savedProduct);
     }
 
     public void delete(Long id) {
         Product product = findById(id);
-        products.remove(product);
+//        products.remove(product);
+        productRepository.delete(product);
     }
 
     private Product findById(Long id) {
-        return products.stream()
-                .filter(product -> product.id().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new ProductNotFoundException(id));
+//        return products.stream()
+//                .filter(product -> product.id().equals(id))
+//                .findFirst()
+        return productRepository.findById(id)
+                .orElseThrow(
+                        () -> new ProductNotFoundException(id)
+                );
     }
 
     private ProductResponse toResponse(Product product) {
