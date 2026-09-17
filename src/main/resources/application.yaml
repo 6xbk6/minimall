@@ -1,3 +1,20 @@
 spring:
   application:
     name: minimall
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/minimall?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: minimall_app
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.jdbc.core: DEBUG
+    org.springframework.jdbc.support.JdbcTransactionManager: DEBUG
+    org.springframework.transaction.interceptor: TRACE

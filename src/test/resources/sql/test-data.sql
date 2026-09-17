@@ -1,0 +1,21 @@
+INSERT INTO product (
+    name,
+    price,
+    status
+)
+VALUES
+    (
+        '机械键盘',
+        399.00,
+        'ON_SALE'
+    ),
+    (
+        '无线鼠标',
+        129.00,
+        'OUT_OF_STOCK'
+    ),
+    (
+        '显示器支架',
+        259.00,
+        'OFF_SHELF'
+    );

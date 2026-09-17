@@ -9,6 +9,7 @@ import com.xiongbokai.minimall.dto.response.ProductResponse;
 import com.xiongbokai.minimall.exception.ProductNotFoundException;
 import com.xiongbokai.minimall.repository.ProductRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
 //import java.util.concurrent.atomic.AtomicLong;
 
 @Service
+@Transactional(readOnly = true)
 public class ProductService {
 
 //    private final List<Product> products = new CopyOnWriteArrayList<>(
@@ -83,6 +85,7 @@ public class ProductService {
         return toResponse(findById(id));
     };
 
+    @Transactional
     public  ProductResponse create(ProductCreateRequest request) {
 //        Long id = idGenerator.incrementAndGet();
 
@@ -102,6 +105,7 @@ public class ProductService {
         return toResponse(savedProduct);
     }
 
+    @Transactional
     public ProductResponse update(
             Long id,
             ProductUpdateRequest request
@@ -124,6 +128,7 @@ public class ProductService {
         return toResponse(savedProduct);
     }
 
+    @Transactional
     public ProductResponse patch(
             Long id,
             ProductPatchRequest request
@@ -158,6 +163,7 @@ public class ProductService {
         return toResponse(savedProduct);
     }
 
+    @Transactional
     public void delete(Long id) {
         Product product = findById(id);
 //        products.remove(product);
