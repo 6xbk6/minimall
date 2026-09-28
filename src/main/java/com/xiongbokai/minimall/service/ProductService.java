@@ -89,11 +89,16 @@ public class ProductService {
     public  ProductResponse create(ProductCreateRequest request) {
 //        Long id = idGenerator.incrementAndGet();
 
+        int stock = request.stock() == null
+                ? 0
+                : request.stock();
+
         Product product = new Product(
 //                id,
                 null,
                 request.name(),
                 request.price(),
+                stock,
                 ProductStatus.ON_SALE
         );
 
@@ -116,6 +121,7 @@ public class ProductService {
                 existingProduct.id(),
                 request.name(),
                 request.price(),
+                request.stock(),
                 request.status()
         );
 
@@ -143,6 +149,10 @@ public class ProductService {
                 ? request.price()
                 : existingProduct.price();
 
+        int newStock = request.stock() != null
+                ? request.stock()
+                : existingProduct.stock();
+
         ProductStatus newStatus = request.status() != null
                 ? request.status()
                 : existingProduct.status();
@@ -151,6 +161,7 @@ public class ProductService {
                 existingProduct.id(),
                 newName,
                 newPrice,
+                newStock,
                 newStatus
         );
 
@@ -185,6 +196,7 @@ public class ProductService {
                 product.id(),
                 product.name(),
                 product.price(),
+                product.stock(),
                 product.status()
         );
     };

@@ -28,12 +28,16 @@ public record ProductPatchRequest(
         )
         BigDecimal price,
 
+        @PositiveOrZero(message = "商品库存不能小于0")
+        Integer stock,
+
         ProductStatus status
 ) {
     @AssertTrue(message = "至少提供一个需要修改的字段")
     public boolean isAnyFieldProvided() {
         return name != null
                 || price != null
+                || stock != null
                 || status != null;
     }
 }

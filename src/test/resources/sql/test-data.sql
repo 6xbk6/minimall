@@ -1,21 +1,29 @@
 INSERT INTO product (
+    id,
     name,
     price,
+    stock,
     status
 )
 VALUES
     (
+        1,
         '机械键盘',
         399.00,
+        100,
         'ON_SALE'
     ),
     (
+        2,
         '无线鼠标',
         129.00,
+        0,
         'OUT_OF_STOCK'
     ),
     (
+        3,
         '显示器支架',
         259.00,
+        100,
         'OFF_SHELF'
     );

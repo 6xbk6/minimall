@@ -28,6 +28,26 @@ class InMemoryProductRepositoryTest {
         assertTrue(repository.findById(1L).isPresent());
         assertTrue(repository.findById(2L).isPresent());
         assertTrue(repository.findById(3L).isPresent());
+        assertEquals(
+                100,
+                repository.findById(1L)
+                        .orElseThrow()
+                        .stock()
+        );
+
+        assertEquals(
+                0,
+                repository.findById(2L)
+                        .orElseThrow()
+                        .stock()
+        );
+
+        assertEquals(
+                100,
+                repository.findById(3L)
+                        .orElseThrow()
+                        .stock()
+        );
     }
 
     @Test
@@ -36,11 +56,13 @@ class InMemoryProductRepositoryTest {
                 null,
                 "人体工学键盘",
                 new BigDecimal("699.00"),
+                20,
                 ProductStatus.ON_SALE
         );
 
         Product savedProduct = repository.save(product);
 
+        assertEquals(20, savedProduct.stock());
         assertEquals(4L, savedProduct.id());
         assertEquals("人体工学键盘", savedProduct.name());
         assertEquals(
@@ -63,11 +85,13 @@ class InMemoryProductRepositoryTest {
                 1L,
                 "机械键盘 Pro",
                 new BigDecimal("599.00"),
+                50,
                 ProductStatus.OFF_SHELF
         );
 
         Product savedProduct = repository.save(updatedProduct);
 
+        assertEquals(50, savedProduct.stock());
         assertEquals(updatedProduct, savedProduct);
         assertEquals(
                 updatedProduct,

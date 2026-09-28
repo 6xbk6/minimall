@@ -45,6 +45,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value("机械键盘"))
                 .andExpect(jsonPath("$.price").value(399.00))
+                .andExpect(jsonPath("$.stock").value(100))
                 .andExpect(jsonPath("$.status").value("ON_SALE"));
     }
 
@@ -71,6 +72,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.name").value("人体工学键盘"))
                 .andExpect(jsonPath("$.price").value(699.00))
+                .andExpect(jsonPath("$.stock").value(0))
                 .andExpect(jsonPath("$.status").value("ON_SALE"));
     }
 
@@ -80,6 +82,7 @@ class ProductControllerTest {
             {
               "name": "机械键盘 Pro",
               "price": 599.00,
+              "stock": 50,
               "status": "OFF_SHELF"
             }
             """;
@@ -98,6 +101,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value("机械键盘 Pro"))
                 .andExpect(jsonPath("$.price").value(599.00))
+                .andExpect(jsonPath("$.stock").value(50))
                 .andExpect(jsonPath("$.status").value("OFF_SHELF"));
 
         mockMvc.perform(
@@ -107,6 +111,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value("机械键盘 Pro"))
                 .andExpect(jsonPath("$.price").value(599.00))
+                .andExpect(jsonPath("$.stock").value(50))
                 .andExpect(jsonPath("$.status").value("OFF_SHELF"));
     }
 
@@ -132,6 +137,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").value(2))
                 .andExpect(jsonPath("$.name").value("无线鼠标"))
                 .andExpect(jsonPath("$.price").value(199.00))
+                .andExpect(jsonPath("$.stock").value(0))
                 .andExpect(jsonPath("$.status").value("OUT_OF_STOCK"));
 
         mockMvc.perform(
@@ -141,6 +147,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").value(2))
                 .andExpect(jsonPath("$.name").value("无线鼠标"))
                 .andExpect(jsonPath("$.price").value(199.00))
+                .andExpect(jsonPath("$.stock").value(0))
                 .andExpect(jsonPath("$.status").value("OUT_OF_STOCK"));
     }
 
@@ -178,6 +185,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value("机械键盘"))
                 .andExpect(jsonPath("$.price").value(399.00))
+                .andExpect(jsonPath("$.stock").value(100))
                 .andExpect(jsonPath("$.status").value("ON_SALE"));
     }
 

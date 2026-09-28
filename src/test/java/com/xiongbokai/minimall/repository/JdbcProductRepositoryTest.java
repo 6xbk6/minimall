@@ -49,6 +49,10 @@ class JdbcProductRepositoryTest {
                 ProductStatus.ON_SALE,
                 firstProduct.status()
         );
+        assertEquals(
+                100,
+                firstProduct.stock()
+        );
     }
 
     @Test
@@ -70,6 +74,10 @@ class JdbcProductRepositoryTest {
                 ProductStatus.OUT_OF_STOCK,
                 product.status()
         );
+        assertEquals(
+                0,
+                product.stock()
+        );
     }
 
     @Test
@@ -86,11 +94,16 @@ class JdbcProductRepositoryTest {
                 null,
                 "人体工学键盘",
                 new BigDecimal("699.00"),
+                20,
                 ProductStatus.ON_SALE
         );
 
         Product savedProduct = repository.save(newProduct);
 
+        assertEquals(
+                20,
+                savedProduct.stock()
+        );
         assertNotNull(savedProduct.id());
         assertTrue(savedProduct.id() > 3L);
         assertEquals("人体工学键盘", savedProduct.name());
@@ -119,6 +132,7 @@ class JdbcProductRepositoryTest {
                 1L,
                 "机械键盘 Pro",
                 new BigDecimal("599.00"),
+                50,
                 ProductStatus.OFF_SHELF
         );
 
@@ -130,6 +144,10 @@ class JdbcProductRepositoryTest {
                 .findById(1L)
                 .orElseThrow();
 
+        assertEquals(
+                50,
+                productFromDatabase.stock()
+        );
         assertEquals(1L, productFromDatabase.id());
         assertEquals(
                 "机械键盘 Pro",

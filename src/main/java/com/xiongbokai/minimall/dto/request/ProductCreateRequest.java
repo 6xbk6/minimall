@@ -1,6 +1,11 @@
 package com.xiongbokai.minimall.dto.request;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -19,6 +24,9 @@ public record ProductCreateRequest(
                 fraction = 2,
                 message = "商品价格最多10位整数和2位小数"
         )
-        BigDecimal price
+        BigDecimal price,
+
+        @PositiveOrZero(message = "商品库存不能小于0")
+        Integer stock
 ) {
 }

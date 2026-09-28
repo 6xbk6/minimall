@@ -42,6 +42,7 @@ class ProductServiceTest {
                 1L,
                 "机械键盘",
                 new BigDecimal("399.00"),
+                100,
                 ProductStatus.ON_SALE
         );
 
@@ -55,6 +56,10 @@ class ProductServiceTest {
         assertEquals(
                 new BigDecimal("399.00"),
                 response.price()
+        );
+        assertEquals(
+                100,
+                response.stock()
         );
         assertEquals(
                 ProductStatus.ON_SALE,
@@ -87,13 +92,15 @@ class ProductServiceTest {
     void shouldCreateProductWithDefaultStatus() {
         ProductCreateRequest request = new ProductCreateRequest(
                 "人体工学键盘",
-                new BigDecimal("699.00")
+                new BigDecimal("699.00"),
+                null
         );
 
         Product savedProduct = new Product(
                 4L,
                 "人体工学键盘",
                 new BigDecimal("699.00"),
+                0,
                 ProductStatus.ON_SALE
         );
 
@@ -109,11 +116,20 @@ class ProductServiceTest {
 
         Product productToSave = productCaptor.getValue();
 
+        assertEquals(
+                0,
+                productToSave.stock()
+        );
+
         assertNull(productToSave.id());
         assertEquals("人体工学键盘", productToSave.name());
         assertEquals(
                 new BigDecimal("699.00"),
                 productToSave.price()
+        );
+        assertEquals(
+                0,
+                response.stock()
         );
         assertEquals(
                 ProductStatus.ON_SALE,
@@ -138,12 +154,14 @@ class ProductServiceTest {
                 2L,
                 "无线鼠标",
                 new BigDecimal("129.00"),
+                0,
                 ProductStatus.OUT_OF_STOCK
         );
 
         ProductPatchRequest request = new ProductPatchRequest(
                 null,
                 new BigDecimal("199.00"),
+                null,
                 null
         );
 
@@ -151,6 +169,7 @@ class ProductServiceTest {
                 2L,
                 "无线鼠标",
                 new BigDecimal("199.00"),
+                0,
                 ProductStatus.OUT_OF_STOCK
         );
 
@@ -177,6 +196,10 @@ class ProductServiceTest {
                 productToSave.price()
         );
         assertEquals(
+                0,
+                productToSave.stock()
+        );
+        assertEquals(
                 ProductStatus.OUT_OF_STOCK,
                 productToSave.status()
         );
@@ -186,6 +209,10 @@ class ProductServiceTest {
         assertEquals(
                 new BigDecimal("199.00"),
                 response.price()
+        );
+        assertEquals(
+                0,
+                response.stock()
         );
         assertEquals(
                 ProductStatus.OUT_OF_STOCK,
@@ -199,6 +226,7 @@ class ProductServiceTest {
                 3L,
                 "显示器支架",
                 new BigDecimal("259.00"),
+                100,
                 ProductStatus.OFF_SHELF
         );
 
@@ -239,24 +267,28 @@ class ProductServiceTest {
                         1L,
                         "机械键盘",
                         new BigDecimal("399.00"),
+                        100,
                         ProductStatus.ON_SALE
                 ),
                 new Product(
                         2L,
                         "无线键盘",
                         new BigDecimal("299.00"),
+                        0,
                         ProductStatus.OUT_OF_STOCK
                 ),
                 new Product(
                         3L,
                         "机械鼠标",
                         new BigDecimal("199.00"),
+                        50,
                         ProductStatus.ON_SALE
                 ),
                 new Product(
                         4L,
                         "显示器支架",
                         new BigDecimal("259.00"),
+                        100,
                         ProductStatus.OFF_SHELF
                 )
         );
@@ -280,6 +312,10 @@ class ProductServiceTest {
                 response.price()
         );
         assertEquals(
+                100,
+                response.stock()
+        );
+        assertEquals(
                 ProductStatus.ON_SALE,
                 response.status()
         );
@@ -293,12 +329,14 @@ class ProductServiceTest {
                 1L,
                 "机械键盘",
                 new BigDecimal("399.00"),
+                100,
                 ProductStatus.ON_SALE
         );
 
         ProductUpdateRequest request = new ProductUpdateRequest(
                 "机械键盘 Pro",
                 new BigDecimal("599.00"),
+                50,
                 ProductStatus.OFF_SHELF
         );
 
@@ -306,6 +344,7 @@ class ProductServiceTest {
                 1L,
                 "机械键盘 Pro",
                 new BigDecimal("599.00"),
+                50,
                 ProductStatus.OFF_SHELF
         );
 
@@ -332,6 +371,10 @@ class ProductServiceTest {
                 productToSave.price()
         );
         assertEquals(
+                50,
+                productToSave.stock()
+        );
+        assertEquals(
                 ProductStatus.OFF_SHELF,
                 productToSave.status()
         );
@@ -341,6 +384,10 @@ class ProductServiceTest {
         assertEquals(
                 new BigDecimal("599.00"),
                 response.price()
+        );
+        assertEquals(
+                50,
+                response.stock()
         );
         assertEquals(
                 ProductStatus.OFF_SHELF,

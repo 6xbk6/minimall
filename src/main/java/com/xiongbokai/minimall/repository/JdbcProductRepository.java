@@ -26,6 +26,7 @@ public class JdbcProductRepository implements ProductRepository {
             resultSet.getLong("id"),
             resultSet.getString("name"),
             resultSet.getBigDecimal("price"),
+            resultSet.getInt("stock"),
             ProductStatus.valueOf(
                     resultSet.getString("status")
             )
@@ -38,7 +39,7 @@ public class JdbcProductRepository implements ProductRepository {
     @Override
     public List<Product> findAll() {
         String sql = """
-                SELECT id, name, price, status
+                SELECT id, name, price, stock, status
                 FROM product
                 ORDER BY id
                 """;
@@ -52,7 +53,7 @@ public class JdbcProductRepository implements ProductRepository {
     @Override
     public Optional<Product> findById(Long id) {
         String sql = """
-                SELECT id, name, price, status
+                SELECT id, name, price, stock, status
                 FROM product
                 WHERE id = ?
                 """;
@@ -79,6 +80,7 @@ public class JdbcProductRepository implements ProductRepository {
             UPDATE product
             SET name = ?,
                 price = ?,
+                stock = ?,
                 status = ?
             WHERE id = ?
             """;
@@ -87,6 +89,7 @@ public class JdbcProductRepository implements ProductRepository {
                     sql,
                     product.name(),
                     product.price(),
+                    product.stock(),
                     product.status().name(),
                     product.id()
             );
@@ -101,8 +104,8 @@ public class JdbcProductRepository implements ProductRepository {
         }
 
         String sql = """
-            INSERT INTO product (name, price, status)
-            VALUES (?, ?, ?)
+            INSERT INTO product (name, price, stock, status)
+            VALUES (?, ?, ?, ?)
             """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -125,8 +128,13 @@ public class JdbcProductRepository implements ProductRepository {
                             product.price()
                     );
 
-                    statement.setString(
+                    statement.setInt(
                             3,
+                            product.stock()
+                    );
+
+                    statement.setString(
+                            4,
                             product.status().name()
                     );
 
@@ -153,6 +161,7 @@ public class JdbcProductRepository implements ProductRepository {
                 generatedId.longValue(),
                 product.name(),
                 product.price(),
+                product.stock(),
                 product.status()
         );
     }

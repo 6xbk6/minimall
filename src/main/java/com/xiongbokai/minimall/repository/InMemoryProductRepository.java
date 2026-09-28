@@ -19,18 +19,21 @@ public class InMemoryProductRepository implements ProductRepository {
                             1L,
                             "机械键盘",
                             new BigDecimal("399.00"),
+                            100,
                             ProductStatus.ON_SALE
                     ),
                     new Product(
                             2L,
                             "无线鼠标",
                             new BigDecimal("129.00"),
+                            0,
                             ProductStatus.OUT_OF_STOCK
                     ),
                     new Product(
                             3L,
                             "显示器支架",
                             new BigDecimal("259.00"),
+                            100,
                             ProductStatus.OFF_SHELF
                     )
             )
@@ -58,6 +61,7 @@ public class InMemoryProductRepository implements ProductRepository {
                     idGenerator.incrementAndGet(),
                     product.name(),
                     product.price(),
+                    product.stock(),
                     product.status()
             );
 
