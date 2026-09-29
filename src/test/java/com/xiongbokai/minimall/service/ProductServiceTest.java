@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.xiongbokai.minimall.exception.InsufficientStockException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -394,4 +395,97 @@ class ProductServiceTest {
                 response.status()
         );
     }
+
+//
+    @Test
+    void shouldDeductStockSuccessfully() {
+        Product updatedProduct = new Product(
+                1L,
+                "机械键盘",
+                new BigDecimal("399.00"),
+                97,
+                ProductStatus.ON_SALE
+        );
+
+        when(productRepository.deductStock(1L, 3))
+                .thenReturn(true);
+        when(productRepository.findById(1L))
+                .thenReturn(Optional.of(updatedProduct));
+
+        ProductResponse response =
+                productService.deductStock(1L, 3);
+
+        verify(productRepository).deductStock(1L, 3);
+        assertEquals(97, response.stock());
+    }
+
+//    @Test
+//    void shouldRejectDeductionWhenStockIsInsufficient() {
+//        Product product = new Product(
+//                2L,
+//                "无线鼠标",
+//                new BigDecimal("129.00"),
+//                1,
+//                ProductStatus.OUT_OF_STOCK
+//        );
+//
+//        when(productRepository.findById(2L))
+//                .thenReturn(Optional.of(product));
+//
+//        InsufficientStockException exception = assertThrows(
+//                InsufficientStockException.class,
+//                () -> productService.deductStock(2L, 5)
+//        );
+//
+//        assertEquals(2L, exception.getProductId());
+//        assertEquals(1, exception.getCurrentStock());
+//        assertEquals(5, exception.getRequestedQuantity());
+//
+//        verify(productRepository, never())
+//                .save(any(Product.class));
+//    }
+
+    @Test
+    void shouldRejectDeductionWhenStockIsInsufficient() {
+        Product product = new Product(
+                2L,
+                "无线鼠标",
+                new BigDecimal("129.00"),
+                1,
+                ProductStatus.OUT_OF_STOCK
+        );
+
+        when(productRepository.deductStock(2L, 5))
+                .thenReturn(false);
+        when(productRepository.findById(2L))
+                .thenReturn(Optional.of(product));
+
+        InsufficientStockException exception = assertThrows(
+                InsufficientStockException.class,
+                () -> productService.deductStock(2L, 5)
+        );
+
+        assertEquals(2L, exception.getProductId());
+        assertEquals(1, exception.getCurrentStock());
+        assertEquals(5, exception.getRequestedQuantity());
+
+        verify(productRepository, never())
+                .save(any(Product.class));
+    }
+
+    @Test
+    void shouldRejectDeductionWhenQuantityIsLessThanOne() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> productService.deductStock(1L, 0)
+        );
+
+        assertEquals("扣减数量必须大于0", exception.getMessage());
+
+        verify(productRepository, never())
+                .findById(any());
+        verify(productRepository, never())
+                .save(any(Product.class));
+    }
+
 }

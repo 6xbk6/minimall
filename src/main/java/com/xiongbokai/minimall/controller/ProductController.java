@@ -7,11 +7,13 @@ import com.xiongbokai.minimall.dto.request.ProductPatchRequest;
 import com.xiongbokai.minimall.dto.request.ProductUpdateRequest;
 import com.xiongbokai.minimall.dto.response.ProductResponse;
 import com.xiongbokai.minimall.service.ProductService;
-import jakarta.websocket.server.PathParam;
+import com.xiongbokai.minimall.dto.request.StockDeductRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import jakarta.websocket.server.PathParam;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -83,6 +85,17 @@ public class ProductController {
             @Valid @RequestBody ProductPatchRequest request
     ) {
         return  productService.patch(id, request);
+    }
+
+    @PostMapping("/{id}/deduct-stock")
+    public ProductResponse deductStock(
+            @PathVariable(name = "id") Long id,
+            @Valid @RequestBody StockDeductRequest request
+    ) {
+        return productService.deductStock(
+                id,
+                request.quantity()
+        );
     }
 
     @GetMapping("/{id}")

@@ -8,6 +8,8 @@ import com.xiongbokai.minimall.dto.request.ProductUpdateRequest;
 import com.xiongbokai.minimall.dto.response.ProductResponse;
 import com.xiongbokai.minimall.exception.ProductNotFoundException;
 import com.xiongbokai.minimall.repository.ProductRepository;
+import com.xiongbokai.minimall.exception.InsufficientStockException;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -172,6 +174,75 @@ public class ProductService {
 
 //        return toResponse(updatedProduct);
         return toResponse(savedProduct);
+    }
+
+//    @Transactional
+//    public ProductResponse deductStock(Long id, int quantity) {
+//        if (quantity < 1) {
+//            throw new IllegalArgumentException(
+//                    "扣减数量必须大于0"
+//            );
+//        }
+//
+//        Product product = findById(id);
+//
+//        try {
+//            Thread.sleep(50);
+//        } catch (InterruptedException exception) {
+//            Thread.currentThread().interrupt();
+//        }
+//
+//        if (product.stock() < quantity) {
+//            throw new InsufficientStockException(
+//                    id,
+//                    product.stock(),
+//                    quantity
+//            );
+//        }
+//
+//        Product updatedProduct = new Product(
+//                product.id(),
+//                product.name(),
+//                product.price(),
+//                product.stock() - quantity,
+//                product.status()
+//        );
+//
+//        Product savedProduct = productRepository.save(updatedProduct);
+//
+//        return toResponse(savedProduct);
+//    }
+
+    @Transactional
+    public ProductResponse deductStock(Long id, int quantity) {
+        if (quantity < 1) {
+            throw new IllegalArgumentException(
+                    "扣减数量必须大于0"
+            );
+        }
+
+        boolean deducted = productRepository.deductStock(
+                id,
+                quantity
+        );
+
+        if (!deducted) {
+            Product product = productRepository.findById(id)
+                    .orElseThrow(() ->
+                            new ProductNotFoundException(id)
+                    );
+
+            throw new InsufficientStockException(
+                    id,
+                    product.stock(),
+                    quantity
+            );
+        }
+
+        Product updatedProduct = productRepository.findById(id)
+                .orElseThrow();
+
+        return toResponse(updatedProduct);
     }
 
     @Transactional

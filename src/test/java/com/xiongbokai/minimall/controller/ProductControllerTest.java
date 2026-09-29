@@ -313,4 +313,100 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.message").value("商品不存在，id： 999"))
                 .andExpect(jsonPath("$.path").value("/api/products/999"));
     }
+
+    @Test
+    void shouldDeductStock() throws Exception {
+        String requestBody = """
+        {
+          "quantity": 3
+        }
+        """;
+
+        mockMvc.perform(
+                        post("/api/products/{id}/deduct-stock", 1L)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.stock").value(97))
+                .andExpect(jsonPath("$.status").value("ON_SALE"));
+
+        mockMvc.perform(
+                        get("/api/products/{id}", 1L)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(97));
+    }
+
+    @Test
+    void shouldReturnErrorWhenStockIsInsufficient() throws Exception {
+        String requestBody = """
+        {
+          "quantity": 5
+        }
+        """;
+
+        mockMvc.perform(
+                        post("/api/products/{id}/deduct-stock", 2L)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_STOCK"))
+                .andExpect(jsonPath("$.path")
+                        .value("/api/products/2/deduct-stock"));
+
+        // 失败后库存必须原样不变（事务回滚 + 根本没执行 save）
+        mockMvc.perform(
+                        get("/api/products/{id}", 2L)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(0));
+    }
+
+    @Test
+    void shouldReturnValidationErrorWhenDeductQuantityIsInvalid()
+            throws Exception {
+
+        String requestBody = """
+        {
+          "quantity": 0
+        }
+        """;
+
+        mockMvc.perform(
+                        post("/api/products/{id}/deduct-stock", 1L)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(
+                        jsonPath("$.message").value(
+                                "参数校验失败，字段: quantity，原因: 扣减数量必须大于0"
+                        )
+                );
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenDeductingStockForMissingProduct()
+            throws Exception {
+
+        String requestBody = """
+        {
+          "quantity": 1
+        }
+        """;
+
+        mockMvc.perform(
+                        post("/api/products/{id}/deduct-stock", 999L)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+    }
+
 }

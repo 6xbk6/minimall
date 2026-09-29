@@ -174,6 +174,25 @@ public class JdbcProductRepository implements ProductRepository {
 //    }
 
     @Override
+    public boolean deductStock(Long id, int quantity) {
+        String sql = """
+            UPDATE product
+            SET stock = stock - ?
+            WHERE id = ?
+              AND stock >= ?
+            """;
+
+        int affectedRows = jdbcTemplate.update(
+                sql,
+                quantity,
+                id,
+                quantity
+        );
+
+        return affectedRows == 1;
+    }
+
+    @Override
     public void delete(Product product) {
         String sql = """
             DELETE FROM product

@@ -13,5 +13,7 @@ public interface ProductRepository {
 
     Product save(Product product);
 
+    boolean deductStock(Long id, int quantity);
+
     void delete(Product product);
 }
