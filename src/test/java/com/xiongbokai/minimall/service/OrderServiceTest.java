@@ -235,4 +235,85 @@ class OrderServiceTest {
                 .restock(any(), anyInt());
     }
 
+    @Test
+    void shouldPayCreatedOrder() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.CREATED
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+        when(orderRepository.updateStatus(10L, OrderStatus.PAID))
+                .thenReturn(true);
+
+        OrderResponse response = orderService.pay(10L);
+
+        verify(orderRepository).updateStatus(10L, OrderStatus.PAID);
+        assertEquals(OrderStatus.PAID.name(),
+                response.status().name());
+    }
+
+    @Test
+    void shouldRejectPayWhenOrderMissing() {
+        when(orderRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                OrderNotFoundException.class,
+                () -> orderService.pay(999L)
+        );
+
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldRejectPayWhenOrderAlreadyPaid() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.PAID
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalOrderStatusException.class,
+                () -> orderService.pay(10L)
+        );
+
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldRejectPayWhenOrderCancelled() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.CANCELLED
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalOrderStatusException.class,
+                () -> orderService.pay(10L)
+        );
+
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
+
 }

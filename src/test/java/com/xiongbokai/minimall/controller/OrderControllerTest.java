@@ -233,4 +233,96 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.stock").value(100));
     }
 
+    @Test
+    void shouldPayOrder() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long orderId = orderIdNumber.longValue();
+
+        // 支付
+        mockMvc.perform(
+                        post("/api/orders/{id}/pay", orderId)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId))
+                .andExpect(jsonPath("$.status").value("PAID"));
+
+        // 支付不动库存，仍是扣减后的 98
+        mockMvc.perform(get("/api/products/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(98));
+    }
+
+    @Test
+    void shouldReturn404WhenPayingMissingOrder() throws Exception {
+        mockMvc.perform(
+                        post("/api/orders/{id}/pay", 999L)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"))
+                .andExpect(jsonPath("$.path")
+                        .value("/api/orders/999/pay"));
+    }
+
+    @Test
+    void shouldRejectPayingOrderTwice() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long orderId = orderIdNumber.longValue();
+
+        // 第一次支付成功
+        mockMvc.perform(
+                        post("/api/orders/{id}/pay", orderId)
+                )
+                .andExpect(status().isOk());
+
+        // 第二次支付被拒
+        mockMvc.perform(
+                        post("/api/orders/{id}/pay", orderId)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("ILLEGAL_ORDER_STATUS"));
+
+        // 库存仍是 98，支付不碰库存
+        mockMvc.perform(get("/api/products/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(98));
+    }
+
+
 }

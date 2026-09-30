@@ -136,6 +136,49 @@ public class OrderService {
         );
     }
 
+    @Transactional
+    public OrderResponse pay(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(orderId)
+                );
+
+        if (order.status() != OrderStatus.CREATED) {
+            throw new IllegalOrderStatusException(
+                    orderId,
+                    order.status(),
+                    "支付订单"
+            );
+        }
+
+        boolean statusUpdated = orderRepository.updateStatus(
+                orderId,
+                OrderStatus.PAID
+        );
+
+        if (!statusUpdated) {
+            throw new IllegalStateException(
+                    "更新订单状态失败，订单id： " + orderId
+            );
+        }
+
+        Order paidOrder = new Order(
+                order.id(),
+                order.productId(),
+                order.quantity(),
+                order.totalAmount(),
+                OrderStatus.PAID
+        );
+
+        return new OrderResponse(
+                paidOrder.id(),
+                paidOrder.productId(),
+                paidOrder.quantity(),
+                paidOrder.totalAmount(),
+                paidOrder.status()
+        );
+    }
+
     public List<OrderResponse> list() {
         return orderRepository.findAll()
                 .stream()
