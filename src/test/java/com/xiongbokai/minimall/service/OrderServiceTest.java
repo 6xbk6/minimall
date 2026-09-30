@@ -1,5 +1,7 @@
 package com.xiongbokai.minimall.service;
 
+import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
+import com.xiongbokai.minimall.exception.OrderNotFoundException;
 import com.xiongbokai.minimall.domain.product.Product;
 import com.xiongbokai.minimall.domain.product.ProductStatus;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
@@ -142,4 +144,95 @@ class OrderServiceTest {
         verify(productRepository, never())
                 .findById(any());
     }
+
+    @Test
+    void shouldCancelCreatedOrderAndRestock() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.CREATED
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+        when(productRepository.restock(1L, 2))
+                .thenReturn(true);
+        when(orderRepository.updateStatus(
+                10L, OrderStatus.CANCELLED))
+                .thenReturn(true);
+
+        OrderResponse response = orderService.cancel(10L);
+
+        verify(productRepository).restock(1L, 2);
+        verify(orderRepository).updateStatus(
+                10L, OrderStatus.CANCELLED
+        );
+        assertEquals(OrderStatus.CANCELLED.name(),
+                response.status().name());
+    }
+
+    @Test
+    void shouldRejectCancelWhenOrderMissing() {
+        when(orderRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                OrderNotFoundException.class,
+                () -> orderService.cancel(999L)
+        );
+
+        verify(productRepository, never())
+                .restock(any(), anyInt());
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldRejectCancelWhenOrderAlreadyCancelled() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.CANCELLED
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalOrderStatusException.class,
+                () -> orderService.cancel(10L)
+        );
+
+        verify(productRepository, never())
+                .restock(any(), anyInt());
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldRejectCancelWhenOrderPaid() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.PAID
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalOrderStatusException.class,
+                () -> orderService.cancel(10L)
+        );
+
+        verify(productRepository, never())
+                .restock(any(), anyInt());
+    }
+
 }

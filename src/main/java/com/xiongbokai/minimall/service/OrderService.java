@@ -1,7 +1,9 @@
 package com.xiongbokai.minimall.service;
 
-import com.xiongbokai.minimall.domain.order.Order;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
+import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
+import com.xiongbokai.minimall.exception.OrderNotFoundException;
+import com.xiongbokai.minimall.domain.order.Order;
 import com.xiongbokai.minimall.domain.product.Product;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
 import com.xiongbokai.minimall.exception.InsufficientStockException;
@@ -76,6 +78,61 @@ public class OrderService {
                 savedOrder.quantity(),
                 savedOrder.totalAmount(),
                 savedOrder.status()
+        );
+    }
+
+    @Transactional
+    public OrderResponse cancel(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(orderId)
+                );
+
+        if (order.status() != OrderStatus.CREATED) {
+            throw new IllegalOrderStatusException(
+                    orderId,
+                    order.status(),
+                    "取消订单"
+            );
+        }
+
+        boolean restocked = productRepository.restock(
+                order.productId(),
+                order.quantity()
+        );
+
+        if (!restocked) {
+            throw new IllegalStateException(
+                    "还库存失败，商品不存在，商品id： "
+                            + order.productId()
+            );
+        }
+
+        boolean statusUpdated = orderRepository.updateStatus(
+                orderId,
+                OrderStatus.CANCELLED
+        );
+
+        if (!statusUpdated) {
+            throw new IllegalStateException(
+                    "更新订单状态失败，订单id： " + orderId
+            );
+        }
+
+        Order cancelledOrder = new Order(
+                order.id(),
+                order.productId(),
+                order.quantity(),
+                order.totalAmount(),
+                OrderStatus.CANCELLED
+        );
+
+        return new OrderResponse(
+                cancelledOrder.id(),
+                cancelledOrder.productId(),
+                cancelledOrder.quantity(),
+                cancelledOrder.totalAmount(),
+                cancelledOrder.status()
         );
     }
 

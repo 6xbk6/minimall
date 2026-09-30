@@ -1,5 +1,7 @@
 package com.xiongbokai.minimall.controller;
 
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.test.web.servlet.MvcResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -128,4 +130,107 @@ class OrderControllerTest {
                         )
                 );
     }
+
+    @Test
+    void shouldCancelOrderAndRestoreStock() throws Exception {
+        // 先下单
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+
+        Long orderId = orderIdNumber.longValue();
+
+
+        // 取消
+        mockMvc.perform(
+                        post("/api/orders/{id}/cancel", orderId)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        // 订单还在列表里，但状态是 CANCELLED
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].status").value("CANCELLED"));
+
+        // 库存已还回 100
+        mockMvc.perform(get("/api/products/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(100));
+    }
+
+    @Test
+    void shouldReturn404WhenCancellingMissingOrder() throws Exception {
+        mockMvc.perform(
+                        post("/api/orders/{id}/cancel", 999L)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"))
+                .andExpect(jsonPath("$.path")
+                        .value("/api/orders/999/cancel"));
+    }
+
+    @Test
+    void shouldRejectCancellingOrderTwice() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+
+        Long orderId = orderIdNumber.longValue();
+
+
+        // 第一次取消成功
+        mockMvc.perform(
+                        post("/api/orders/{id}/cancel", orderId)
+                )
+                .andExpect(status().isOk());
+
+        // 第二次取消被拒
+        mockMvc.perform(
+                        post("/api/orders/{id}/cancel", orderId)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("ILLEGAL_ORDER_STATUS"));
+
+        // 库存只能是 100，绝不能因为取消两次被还成 102
+        mockMvc.perform(get("/api/products/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(100));
+    }
+
 }

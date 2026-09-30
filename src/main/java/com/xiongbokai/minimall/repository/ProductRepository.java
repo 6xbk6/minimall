@@ -15,5 +15,7 @@ public interface ProductRepository {
 
     boolean deductStock(Long id, int quantity);
 
+    boolean restock(Long id, int quantity);
+
     void delete(Product product);
 }

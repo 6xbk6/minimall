@@ -44,7 +44,7 @@ class StockConcurrencyTest {
     void restoreStock() {
         jdbcTemplate.update(
                 "UPDATE product SET stock = ? WHERE id = 1",
-                50
+                100
         );
     }
 

@@ -193,6 +193,23 @@ public class JdbcProductRepository implements ProductRepository {
     }
 
     @Override
+    public boolean restock(Long id, int quantity) {
+        String sql = """
+            UPDATE product
+            SET stock = stock + ?
+            WHERE id = ?
+            """;
+
+        int affectedRows = jdbcTemplate.update(
+                sql,
+                quantity,
+                id
+        );
+
+        return affectedRows == 1;
+    }
+
+    @Override
     public void delete(Product product) {
         String sql = """
             DELETE FROM product

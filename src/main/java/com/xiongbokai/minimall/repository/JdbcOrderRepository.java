@@ -107,4 +107,22 @@ public class JdbcOrderRepository implements OrderRepository {
 
         return jdbcTemplate.query(sql, orderRowMapper);
     }
+
+    @Override
+    public boolean updateStatus(Long id, OrderStatus status) {
+        String sql = """
+            UPDATE purchase_order
+            SET status = ?
+            WHERE id = ?
+            """;
+
+        int affectedRows = jdbcTemplate.update(
+                sql,
+                status.name(),
+                id
+        );
+
+        return affectedRows == 1;
+    }
+
 }

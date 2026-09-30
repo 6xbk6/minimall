@@ -104,6 +104,31 @@ public class InMemoryProductRepository implements ProductRepository {
     }
 
     @Override
+    public synchronized boolean restock(
+            Long id,
+            int quantity
+    ) {
+        Product product = findById(id).orElse(null);
+
+        if (product == null) {
+            return false;
+        }
+
+        Product updatedProduct = new Product(
+                product.id(),
+                product.name(),
+                product.price(),
+                product.stock() + quantity,
+                product.status()
+        );
+
+        int index = products.indexOf(product);
+        products.set(index, updatedProduct);
+
+        return true;
+    }
+
+    @Override
     public void delete(Product product) {
         products.remove(product);
     }
