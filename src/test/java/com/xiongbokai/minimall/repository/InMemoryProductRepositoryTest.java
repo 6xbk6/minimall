@@ -110,4 +110,36 @@ class InMemoryProductRepositoryTest {
         assertTrue(repository.findById(3L).isEmpty());
         assertEquals(2, repository.findAll().size());
     }
+
+    @Test
+    void shouldCountProductsInMemory() {
+        long initialCount = repository.count();
+
+        Product newProduct = new Product(
+                null,
+                "内存测试商品",
+                new BigDecimal("9.90"),
+                5,
+                ProductStatus.ON_SALE
+        );
+
+        repository.save(newProduct);
+
+        long finalCount = repository.count();
+
+        assertEquals(initialCount + 1, finalCount);
+    }
+
+    @Test
+    void shouldReturnPagedProductsInMemory() {
+        List<Product> firstPage = repository.findPage(0, 2);
+
+        assertEquals(2, firstPage.size());
+
+        List<Product> secondPage = repository.findPage(2, 2);
+
+        assertEquals(1, secondPage.size());
+        assertEquals(3L, secondPage.get(0).id());
+    }
+
 }

@@ -409,4 +409,48 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
     }
 
+    @Test
+    void shouldReturnDefaultProductPage() throws Exception {
+        // 测试数据默认 3 个商品，不传参数 → 第一页每页 10
+        mockMvc.perform(get("/api/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    void shouldReturnRequestedProductPage() throws Exception {
+        // 第 0 页，每页 2 条 → 2 条（商品 1、2）
+        mockMvc.perform(get("/api/products")
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[1].id").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        // 第 1 页，每页 2 条 → 剩 1 条（商品 3）
+        mockMvc.perform(get("/api/products")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(3));
+    }
+
+    @Test
+    void shouldReturn400WhenProductPageSizeInvalid() throws Exception {
+        mockMvc.perform(get("/api/products")
+                        .param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PARAMETER_INVALID"))
+                .andExpect(jsonPath("$.path").value("/api/products"));
+    }
+
+
 }

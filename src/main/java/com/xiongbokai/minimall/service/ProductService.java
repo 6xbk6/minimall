@@ -5,6 +5,7 @@ import com.xiongbokai.minimall.domain.product.ProductStatus;
 import com.xiongbokai.minimall.dto.request.ProductCreateRequest;
 import com.xiongbokai.minimall.dto.request.ProductPatchRequest;
 import com.xiongbokai.minimall.dto.request.ProductUpdateRequest;
+import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.dto.response.ProductResponse;
 import com.xiongbokai.minimall.exception.ProductNotFoundException;
 import com.xiongbokai.minimall.repository.ProductRepository;
@@ -271,4 +272,50 @@ public class ProductService {
                 product.status()
         );
     };
+
+    public PageResponse<ProductResponse> listProducts(
+            int page,
+            int size
+    ) {
+        if (page < 0) {
+            throw new IllegalArgumentException(
+                    "页码不能为负数，当前传入： " + page
+            );
+        }
+
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException(
+                    "每页条数必须在 1 到 100 之间，当前传入： " + size
+            );
+        }
+
+        long totalElements = productRepository.count();
+
+        int totalPages = totalElements == 0
+                ? 0
+                : (int) Math.ceil((double) totalElements / size);
+
+        int offset = page * size;
+
+        List<ProductResponse> content = productRepository
+                .findPage(offset, size)
+                .stream()
+                .map(product -> new ProductResponse(
+                        product.id(),
+                        product.name(),
+                        product.price(),
+                        product.stock(),
+                        product.status()
+                ))
+                .toList();
+
+        return new PageResponse<>(
+                content,
+                page,
+                size,
+                totalElements,
+                totalPages
+        );
+    }
+
 }

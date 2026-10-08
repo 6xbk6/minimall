@@ -18,4 +18,9 @@ public interface ProductRepository {
     boolean restock(Long id, int quantity);
 
     void delete(Product product);
+
+    List<Product> findPage(int offset, int limit);
+
+    long count();
+
 }

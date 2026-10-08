@@ -210,6 +210,38 @@ public class JdbcProductRepository implements ProductRepository {
     }
 
     @Override
+    public List<Product> findPage(int offset, int limit) {
+        String sql = """
+            SELECT id,
+                   name,
+                   price,
+                   stock,
+                   status
+            FROM product
+            ORDER BY id
+            LIMIT ?
+            OFFSET ?
+            """;
+
+        return jdbcTemplate.query(
+                sql,
+                productRowMapper,
+                limit,
+                offset
+        );
+    }
+
+    @Override
+    public long count() {
+        String sql = "SELECT COUNT(*) FROM product";
+
+        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+
+        return count == null ? 0L : count;
+    }
+
+
+    @Override
     public void delete(Product product) {
         String sql = """
             DELETE FROM product

@@ -5,6 +5,7 @@ import com.xiongbokai.minimall.domain.product.ProductStatus;
 import com.xiongbokai.minimall.dto.request.ProductCreateRequest;
 import com.xiongbokai.minimall.dto.request.ProductPatchRequest;
 import com.xiongbokai.minimall.dto.request.ProductUpdateRequest;
+import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.dto.response.ProductResponse;
 import com.xiongbokai.minimall.service.ProductService;
 import com.xiongbokai.minimall.dto.request.StockDeductRequest;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.websocket.server.PathParam;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,13 +43,22 @@ public class ProductController {
         // 把 Spring 传进来的 ProductService，保存到当前 Controller 的字段里
     }
 
-    @GetMapping()
-    public List<ProductResponse> list(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) ProductStatus status
+//    @GetMapping()
+//    public List<ProductResponse> list(
+//            @RequestParam(required = false) String keyword,
+//            @RequestParam(required = false) ProductStatus status
+//    ) {
+//        return productService.list(keyword, status);
+//    }
+
+    @GetMapping
+    public PageResponse<ProductResponse> list(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        return productService.list(keyword, status);
+        return productService.listProducts(page, size);
     }
+
 
     @PostMapping()
     public ResponseEntity<ProductResponse> create(

@@ -5,6 +5,7 @@ import com.xiongbokai.minimall.domain.product.ProductStatus;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -127,6 +128,21 @@ public class InMemoryProductRepository implements ProductRepository {
 
         return true;
     }
+
+    @Override
+    public List<Product> findPage(int offset, int limit) {
+        return products.stream()
+                .sorted(Comparator.comparing(Product::id))
+                .skip(offset)
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public long count() {
+        return products.size();
+    }
+
 
     @Override
     public void delete(Product product) {

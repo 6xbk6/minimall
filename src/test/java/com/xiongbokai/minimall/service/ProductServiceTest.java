@@ -2,6 +2,7 @@ package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.product.Product;
 import com.xiongbokai.minimall.domain.product.ProductStatus;
+import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.dto.response.ProductResponse;
 import com.xiongbokai.minimall.repository.ProductRepository;
 import com.xiongbokai.minimall.exception.ProductNotFoundException;
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
@@ -486,6 +488,70 @@ class ProductServiceTest {
                 .findById(any());
         verify(productRepository, never())
                 .save(any(Product.class));
+    }
+
+    @Test
+    void shouldReturnFirstPageOfProducts() {
+        when(productRepository.count()).thenReturn(15L);
+        when(productRepository.findPage(0, 10)).thenReturn(
+                List.of(
+                        new Product(1L, "机械键盘",
+                                new BigDecimal("399.00"),
+                                100, ProductStatus.ON_SALE),
+                        new Product(2L, "无线鼠标",
+                                new BigDecimal("129.00"),
+                                0, ProductStatus.OUT_OF_STOCK)
+                )
+        );
+
+        PageResponse<ProductResponse> page =
+                productService.listProducts(0, 10);
+
+        assertEquals(2, page.content().size());
+        assertEquals(0, page.page());
+        assertEquals(10, page.size());
+        assertEquals(15L, page.totalElements());
+        assertEquals(2, page.totalPages());
+
+        verify(productRepository).findPage(0, 10);
+    }
+
+    @Test
+    void shouldReturnSecondPageOfProducts() {
+        when(productRepository.count()).thenReturn(15L);
+        when(productRepository.findPage(10, 10)).thenReturn(
+                List.of(new Product(11L, "显示器支架",
+                        new BigDecimal("259.00"),
+                        100, ProductStatus.OFF_SHELF))
+        );
+
+        PageResponse<ProductResponse> page =
+                productService.listProducts(1, 10);
+
+        assertEquals(1, page.content().size());
+        assertEquals(2, page.totalPages());
+
+        verify(productRepository).findPage(10, 10);
+    }
+
+    @Test
+    void shouldRejectInvalidProductPageParams() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> productService.listProducts(-1, 10)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> productService.listProducts(0, 0)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> productService.listProducts(0, 101)
+        );
+
+        verify(productRepository, never()).findPage(anyInt(), anyInt());
     }
 
 }

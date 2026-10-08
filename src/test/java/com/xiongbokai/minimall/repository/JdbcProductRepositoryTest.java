@@ -200,4 +200,38 @@ class JdbcProductRepositoryTest {
 
         assertTrue(repository.findById(3L).isPresent());
     }
+
+    @Test
+    void shouldCountProducts() {
+        long initialCount = repository.count();
+
+        Product newProduct = new Product(
+                null,
+                "测试商品",
+                new BigDecimal("9.90"),
+                5,
+                ProductStatus.ON_SALE
+        );
+
+        repository.save(newProduct);
+
+        long finalCount = repository.count();
+
+        assertEquals(initialCount + 1, finalCount);
+    }
+
+    @Test
+    void shouldReturnPagedProductsOrderedById() {
+        List<Product> firstPage = repository.findPage(0, 2);
+
+        assertEquals(2, firstPage.size());
+        assertEquals(1L, firstPage.get(0).id());
+        assertEquals(2L, firstPage.get(1).id());
+
+        List<Product> secondPage = repository.findPage(2, 2);
+
+        assertEquals(1, secondPage.size());
+        assertEquals(3L, secondPage.get(0).id());
+    }
+
 }
