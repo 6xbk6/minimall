@@ -1,6 +1,7 @@
 package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.order.OrderStatus;
+import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
 import com.xiongbokai.minimall.exception.OrderNotFoundException;
 import com.xiongbokai.minimall.domain.order.Order;
@@ -191,5 +192,51 @@ public class OrderService {
                 ))
                 .toList();
     }
+
+    public PageResponse<OrderResponse> listOrders(
+            int page,
+            int size
+    ) {
+        if (page < 0) {
+            throw new IllegalArgumentException(
+                    "页码不能为负数，当前传入： " + page
+            );
+        }
+
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException(
+                    "每页条数必须在 1 到 100 之间，当前传入： " + size
+            );
+        }
+
+        long totalElements = orderRepository.count();
+
+        int totalPages = totalElements == 0
+                ? 0
+                : (int) Math.ceil((double) totalElements / size);
+
+        int offset = page * size;
+
+        List<OrderResponse> content = orderRepository
+                .findPage(offset, size)
+                .stream()
+                .map(order -> new OrderResponse(
+                        order.id(),
+                        order.productId(),
+                        order.quantity(),
+                        order.totalAmount(),
+                        order.status()
+                ))
+                .toList();
+
+        return new PageResponse<>(
+                content,
+                page,
+                size,
+                totalElements,
+                totalPages
+        );
+    }
+
 
 }

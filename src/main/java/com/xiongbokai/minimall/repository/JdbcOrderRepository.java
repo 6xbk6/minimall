@@ -111,10 +111,10 @@ public class JdbcOrderRepository implements OrderRepository {
     @Override
     public boolean updateStatus(Long id, OrderStatus status) {
         String sql = """
-            UPDATE purchase_order
-            SET status = ?
-            WHERE id = ?
-            """;
+                UPDATE purchase_order
+                SET status = ?
+                WHERE id = ?
+                """;
 
         int affectedRows = jdbcTemplate.update(
                 sql,
@@ -123,6 +123,33 @@ public class JdbcOrderRepository implements OrderRepository {
         );
 
         return affectedRows == 1;
+    }
+
+    @Override
+    public List<Order> findPage(int offset, int limit) {
+        String sql = """
+            SELECT id,
+                   product_id,
+                   quantity,
+                   total_amount,
+                   status
+            FROM purchase_order
+            ORDER BY id
+            LIMIT ?
+            OFFSET ?
+            """;
+
+        return jdbcTemplate.query(sql, orderRowMapper, limit, offset);
+
+    }
+
+    @Override
+    public long count() {
+        String sql = "SELECT COUNT(*) FROM purchase_order";
+
+        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+
+        return count == null ? 0L : count;
     }
 
 }

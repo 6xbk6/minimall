@@ -1,5 +1,6 @@
 package com.xiongbokai.minimall.service;
 
+import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
 import com.xiongbokai.minimall.exception.OrderNotFoundException;
 import com.xiongbokai.minimall.domain.product.Product;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -313,6 +315,74 @@ class OrderServiceTest {
 
         verify(orderRepository, never())
                 .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldReturnFirstPage() {
+        when(orderRepository.count()).thenReturn(15L);
+        when(orderRepository.findPage(0, 10)).thenReturn(
+                List.of(
+                        new Order(1L, 1L, 1,
+                                new BigDecimal("399.00"),
+                                OrderStatus.CREATED),
+                        new Order(2L, 1L, 1,
+                                new BigDecimal("399.00"),
+                                OrderStatus.CREATED)
+                )
+        );
+
+        PageResponse<OrderResponse> page =
+                orderService.listOrders(0, 10);
+
+        assertEquals(2, page.content().size());
+        assertEquals(0, page.page());
+        assertEquals(10, page.size());
+        assertEquals(15L, page.totalElements());
+        assertEquals(2, page.totalPages());
+
+        verify(orderRepository).findPage(0, 10);
+    }
+
+    @Test
+    void shouldReturnSecondPageWithOffset() {
+        when(orderRepository.count()).thenReturn(15L);
+        when(orderRepository.findPage(10, 10)).thenReturn(
+                List.of(
+                        new Order(11L, 1L, 1,
+                                new BigDecimal("399.00"),
+                                OrderStatus.CREATED)
+                )
+        );
+
+        PageResponse<OrderResponse> page =
+                orderService.listOrders(1, 10);
+
+        assertEquals(1, page.content().size());
+        assertEquals(1, page.page());
+        assertEquals(2, page.totalPages());
+
+        // 关键：第二页的 OFFSET 必须是 10
+        verify(orderRepository).findPage(10, 10);
+    }
+
+    @Test
+    void shouldRejectInvalidPageParams() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.listOrders(-1, 10)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.listOrders(0, 0)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.listOrders(0, 101)
+        );
+
+        verify(orderRepository, never()).findPage(anyInt(), anyInt());
     }
 
 

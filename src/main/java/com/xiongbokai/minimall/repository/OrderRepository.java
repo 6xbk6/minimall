@@ -16,4 +16,8 @@ public interface OrderRepository {
 
     boolean updateStatus(Long id, OrderStatus status);
 
+    List<Order> findPage(int offset, int limit);
+
+    long count();
+
 }

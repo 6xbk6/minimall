@@ -58,7 +58,7 @@ class OrderControllerTest {
 
         mockMvc.perform(get("/api/orders"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.content.length()").value(1));
     }
 
     @Test
@@ -83,7 +83,7 @@ class OrderControllerTest {
         // 失败后不允许残留任何订单
         mockMvc.perform(get("/api/orders"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content.length()").value(0));
     }
 
     @Test
@@ -168,8 +168,8 @@ class OrderControllerTest {
         // 订单还在列表里，但状态是 CANCELLED
         mockMvc.perform(get("/api/orders"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].status").value("CANCELLED"));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("CANCELLED"));
 
         // 库存已还回 100
         mockMvc.perform(get("/api/products/{id}", 1L))
@@ -322,6 +322,79 @@ class OrderControllerTest {
         mockMvc.perform(get("/api/products/{id}", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stock").value(98));
+    }
+
+    @Test
+    void shouldReturnDefaultFirstPage() throws Exception {
+        // 先建 3 笔订单
+        for (int i = 0; i < 3; i++) {
+            String placeBody = """
+            {
+              "productId": 1,
+              "quantity": 1
+            }
+            """;
+
+            mockMvc.perform(
+                            post("/api/orders")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(placeBody)
+                    )
+                    .andExpect(status().isCreated());
+        }
+
+        // 不传参数 → 默认第一页，每页 10
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    void shouldReturnRequestedPage() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            String placeBody = """
+            {
+              "productId": 1,
+              "quantity": 1
+            }
+            """;
+
+            mockMvc.perform(
+                            post("/api/orders")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(placeBody)
+                    )
+                    .andExpect(status().isCreated());
+        }
+
+        // 第 0 页，每页 2 条 → 2 条
+        mockMvc.perform(get("/api/orders")
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        // 第 1 页，每页 2 条 → 剩 1 条
+        mockMvc.perform(get("/api/orders")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1));
+    }
+
+    @Test
+    void shouldReturn400WhenSizeInvalid() throws Exception {
+        mockMvc.perform(get("/api/orders")
+                        .param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PARAMETER_INVALID"))
+                .andExpect(jsonPath("$.path").value("/api/orders"));
     }
 
 
