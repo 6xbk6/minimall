@@ -2,6 +2,7 @@ package com.xiongbokai.minimall.controller;
 
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 import com.xiongbokai.minimall.dto.request.OrderCreateRequest;
+import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.service.OrderService;
@@ -64,6 +65,13 @@ public class OrderController {
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
         return orderService.listOrders(status, page, size);
+    }
+
+    @GetMapping("/{id}")
+    public OrderDetailResponse getOrderDetail(
+            @PathVariable(name = "id") Long id
+    ) {
+        return orderService.getOrderDetail(id);
     }
 
 }

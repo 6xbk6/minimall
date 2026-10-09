@@ -1,5 +1,6 @@
 package com.xiongbokai.minimall.service;
 
+import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
 import com.xiongbokai.minimall.exception.OrderNotFoundException;
@@ -432,6 +433,53 @@ class OrderServiceTest {
         verify(orderRepository).findPage(0, 10);
         verify(orderRepository, never())
                 .findPageByStatus(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void shouldReturnOrderDetailWithProductName() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.CREATED
+        );
+
+        Product product = new Product(
+                1L,
+                "机械键盘",
+                new BigDecimal("399.00"),
+                100,
+                ProductStatus.ON_SALE
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+        when(productRepository.findById(1L))
+                .thenReturn(Optional.of(product));
+
+        OrderDetailResponse detail =
+                orderService.getOrderDetail(10L);
+
+        assertEquals("机械键盘", detail.productName());
+        assertEquals(2, detail.quantity());
+        assertEquals(new BigDecimal("798.00"),
+                detail.totalAmount());
+        assertEquals(OrderStatus.CREATED, detail.status());
+    }
+
+    @Test
+    void shouldThrowWhenOrderMissingForDetail() {
+        when(orderRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                OrderNotFoundException.class,
+                () -> orderService.getOrderDetail(999L)
+        );
+
+        // 订单都没有，就不该再查商品
+        verify(productRepository, never()).findById(any());
     }
 
 }

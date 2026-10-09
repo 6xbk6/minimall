@@ -496,4 +496,46 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/orders"));
     }
 
+    @Test
+    void shouldReturnOrderDetail() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long orderId = orderIdNumber.longValue();
+
+        // 查详情：订单信息 + 商品名都在
+        mockMvc.perform(get("/api/orders/{id}", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId))
+                .andExpect(jsonPath("$.productId").value(1))
+                .andExpect(jsonPath("$.productName").value("机械键盘"))
+                .andExpect(jsonPath("$.quantity").value(2))
+                .andExpect(jsonPath("$.totalAmount").value(798.00))
+                .andExpect(jsonPath("$.status").value("CREATED"));
+    }
+
+    @Test
+    void shouldReturn404WhenOrderDetailMissing() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"))
+                .andExpect(jsonPath("$.path").value("/api/orders/999"));
+    }
+
 }

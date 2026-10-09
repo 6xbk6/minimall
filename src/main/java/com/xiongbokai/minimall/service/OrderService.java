@@ -1,6 +1,7 @@
 package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.order.OrderStatus;
+import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
 import com.xiongbokai.minimall.exception.OrderNotFoundException;
@@ -298,5 +299,27 @@ public class OrderService {
                 totalPages
         );
     }
+
+    public OrderDetailResponse getOrderDetail(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(orderId)
+                );
+
+        Product product = productRepository.findById(order.productId())
+                .orElseThrow(() ->
+                        new ProductNotFoundException(order.productId())
+                );
+
+        return new OrderDetailResponse(
+                order.id(),
+                order.productId(),
+                product.name(),
+                order.quantity(),
+                order.totalAmount(),
+                order.status()
+        );
+    }
+
 
 }
