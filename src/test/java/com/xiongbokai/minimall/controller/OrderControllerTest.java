@@ -397,5 +397,103 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/orders"));
     }
 
+    @Test
+    void shouldFilterOrdersByStatus() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 1
+        }
+        """;
+
+        // 第一单：CREATED
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(placeBody))
+                .andExpect(status().isCreated());
+
+        // 第二单：下单后支付，变 PAID
+        MvcResult secondPlace = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number secondIdNumber = JsonPath.read(
+                secondPlace.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long secondId = secondIdNumber.longValue();
+
+        mockMvc.perform(post("/api/orders/{id}/pay", secondId))
+                .andExpect(status().isOk());
+
+        // 筛选 PAID：只有 1 笔
+        mockMvc.perform(get("/api/orders")
+                        .param("status", "PAID"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("PAID"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        // 筛选 CREATED：只有 1 笔
+        mockMvc.perform(get("/api/orders")
+                        .param("status", "CREATED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void shouldReturnAllOrdersWhenStatusAbsent() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 1
+        }
+        """;
+
+        // 建 1 笔 CREATED
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(placeBody))
+                .andExpect(status().isCreated());
+
+        // 建 1 笔 PAID
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long orderId = orderIdNumber.longValue();
+
+        mockMvc.perform(post("/api/orders/{id}/pay", orderId))
+                .andExpect(status().isOk());
+
+        // 不传 status → 混合全查，2 笔都在
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void shouldReturn400WhenStatusInvalid() throws Exception {
+        mockMvc.perform(get("/api/orders")
+                        .param("status", "ABC"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"))
+                .andExpect(jsonPath("$.path").value("/api/orders"));
+    }
 
 }

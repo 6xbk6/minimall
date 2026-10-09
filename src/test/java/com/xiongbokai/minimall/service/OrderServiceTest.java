@@ -332,7 +332,7 @@ class OrderServiceTest {
         );
 
         PageResponse<OrderResponse> page =
-                orderService.listOrders(0, 10);
+                orderService.listOrders(null, 0, 10);
 
         assertEquals(2, page.content().size());
         assertEquals(0, page.page());
@@ -355,7 +355,7 @@ class OrderServiceTest {
         );
 
         PageResponse<OrderResponse> page =
-                orderService.listOrders(1, 10);
+                orderService.listOrders(null, 1, 10);
 
         assertEquals(1, page.content().size());
         assertEquals(1, page.page());
@@ -369,21 +369,69 @@ class OrderServiceTest {
     void shouldRejectInvalidPageParams() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.listOrders(-1, 10)
+                () -> orderService.listOrders(null, -1, 10)
         );
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.listOrders(0, 0)
+                () -> orderService.listOrders(null, 0, 0)
         );
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.listOrders(0, 101)
+                () -> orderService.listOrders(null, 0, 101)
         );
 
         verify(orderRepository, never()).findPage(anyInt(), anyInt());
     }
 
+    @Test
+    void shouldFilterOrdersByStatus() {
+        when(orderRepository.countByStatus(OrderStatus.PAID))
+                .thenReturn(5L);
+        when(orderRepository.findPageByStatus(
+                OrderStatus.PAID, 0, 10
+        )).thenReturn(
+                List.of(new Order(
+                        1L, 1L, 1,
+                        new BigDecimal("399.00"),
+                        OrderStatus.PAID
+                ))
+        );
+
+        PageResponse<OrderResponse> page =
+                orderService.listOrders(OrderStatus.PAID, 0, 10);
+
+        assertEquals(5L, page.totalElements());
+        assertEquals(1, page.content().size());
+
+        // 关键：走了筛选方法，绝不能走全量方法
+        verify(orderRepository)
+                .findPageByStatus(OrderStatus.PAID, 0, 10);
+        verify(orderRepository, never())
+                .findPage(anyInt(), anyInt());
+        verify(orderRepository, never())
+                .count();
+    }
+
+    @Test
+    void shouldListAllWhenStatusIsNull() {
+        when(orderRepository.count()).thenReturn(15L);
+        when(orderRepository.findPage(0, 10)).thenReturn(
+                List.of(new Order(
+                        1L, 1L, 1,
+                        new BigDecimal("399.00"),
+                        OrderStatus.CREATED
+                ))
+        );
+
+        PageResponse<OrderResponse> page =
+                orderService.listOrders(null, 0, 10);
+
+        // 关键：没传状态，只能走全量方法
+        verify(orderRepository).findPage(0, 10);
+        verify(orderRepository, never())
+                .findPageByStatus(any(), anyInt(), anyInt());
+    }
 
 }

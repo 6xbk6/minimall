@@ -39,14 +39,14 @@ class OrderPaginationIntegrationTest {
         }
 
         PageResponse<OrderResponse> firstPage =
-                orderService.listOrders(0, 10);
+                orderService.listOrders(null, 0, 10);
 
         assertEquals(10, firstPage.content().size());
         assertEquals(15L, firstPage.totalElements());
         assertEquals(2, firstPage.totalPages());
 
         PageResponse<OrderResponse> secondPage =
-                orderService.listOrders(1, 10);
+                orderService.listOrders(null, 1, 10);
 
         assertEquals(5, secondPage.content().size());
     }
@@ -54,10 +54,40 @@ class OrderPaginationIntegrationTest {
     @Test
     void shouldReturnEmptyPageWhenNoOrders() {
         PageResponse<OrderResponse> page =
-                orderService.listOrders(0, 10);
+                orderService.listOrders(null, 0, 10);
 
         assertEquals(0, page.content().size());
         assertEquals(0L, page.totalElements());
         assertEquals(0, page.totalPages());
     }
+
+    @Test
+    void shouldFilterOrdersByStatusWithPagination() {
+        // 3 笔 CREATED
+        for (int i = 0; i < 3; i++) {
+            orderService.placeOrder(1L, 1);
+        }
+
+        // 2 笔 PAID（下单后支付）
+        for (int i = 0; i < 2; i++) {
+            OrderResponse placed = orderService.placeOrder(1L, 1);
+            orderService.pay(placed.id());
+        }
+
+        PageResponse<OrderResponse> paidPage =
+                orderService.listOrders(OrderStatus.PAID, 0, 10);
+
+        assertEquals(2, paidPage.totalElements());
+        assertEquals(2, paidPage.content().size());
+        assertEquals(
+                OrderStatus.PAID,
+                paidPage.content().get(0).status()
+        );
+
+        PageResponse<OrderResponse> createdPage =
+                orderService.listOrders(OrderStatus.CREATED, 0, 10);
+
+        assertEquals(3, createdPage.totalElements());
+    }
+
 }

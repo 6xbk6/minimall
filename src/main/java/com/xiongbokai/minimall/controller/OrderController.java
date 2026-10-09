@@ -1,5 +1,6 @@
 package com.xiongbokai.minimall.controller;
 
+import com.xiongbokai.minimall.domain.order.OrderStatus;
 import com.xiongbokai.minimall.dto.request.OrderCreateRequest;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
@@ -57,10 +58,12 @@ public class OrderController {
 
     @GetMapping
     public PageResponse<OrderResponse> list(
+            @RequestParam(name = "status", required = false)
+            OrderStatus status,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        return orderService.listOrders(page, size);
+        return orderService.listOrders(status, page, size);
     }
 
 }

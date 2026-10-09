@@ -152,4 +152,49 @@ public class JdbcOrderRepository implements OrderRepository {
         return count == null ? 0L : count;
     }
 
+    @Override
+    public List<Order> findPageByStatus(
+            OrderStatus status,
+            int offset,
+            int limit
+    ) {
+        String sql = """
+            SELECT id,
+                   product_id,
+                   quantity,
+                   total_amount,
+                   status
+            FROM purchase_order
+            WHERE status = ?
+            ORDER BY id
+            LIMIT ?
+            OFFSET ?
+            """;
+
+        return jdbcTemplate.query(
+                sql,
+                orderRowMapper,
+                status.name(),
+                limit,
+                offset
+        );
+    }
+
+    @Override
+    public long countByStatus(OrderStatus status) {
+        String sql = """
+            SELECT COUNT(*)
+            FROM purchase_order
+            WHERE status = ?
+            """;
+
+        Long count = jdbcTemplate.queryForObject(
+                sql,
+                Long.class,
+                status.name()
+        );
+
+        return count == null ? 0L : count;
+    }
+
 }

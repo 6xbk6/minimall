@@ -143,4 +143,49 @@ class JdbcOrderRepositoryTest {
         assertEquals(5, secondPage.get(1).quantity());
     }
 
+    @Test
+    void shouldCountOrdersByStatus() {
+        repository.save(new Order(
+                null, 1L, 1,
+                new BigDecimal("399.00"),
+                OrderStatus.CREATED
+        ));
+        repository.save(new Order(
+                null, 1L, 2,
+                new BigDecimal("798.00"),
+                OrderStatus.PAID
+        ));
+
+        assertEquals(1L, repository.countByStatus(OrderStatus.CREATED));
+        assertEquals(1L, repository.countByStatus(OrderStatus.PAID));
+        assertEquals(0L, repository.countByStatus(OrderStatus.CANCELLED));
+    }
+
+    @Test
+    void shouldReturnPagedOrdersByStatus() {
+        for (int i = 1; i <= 3; i++) {
+            repository.save(new Order(
+                    null, 1L, i,
+                    new BigDecimal("399.00"),
+                    OrderStatus.CREATED
+            ));
+        }
+        repository.save(new Order(
+                null, 1L, 9,
+                new BigDecimal("399.00"),
+                OrderStatus.PAID
+        ));
+
+        List<Order> paidOrders =
+                repository.findPageByStatus(OrderStatus.PAID, 0, 10);
+
+        assertEquals(1, paidOrders.size());
+        assertEquals(OrderStatus.PAID, paidOrders.get(0).status());
+
+        List<Order> createdPage =
+                repository.findPageByStatus(OrderStatus.CREATED, 0, 2);
+
+        assertEquals(2, createdPage.size());
+    }
+
 }

@@ -20,4 +20,12 @@ public interface OrderRepository {
 
     long count();
 
+    List<Order> findPageByStatus(
+            OrderStatus status,
+            int offset,
+            int limit
+    );
+
+    long countByStatus(OrderStatus status);
+
 }
