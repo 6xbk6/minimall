@@ -182,6 +182,61 @@ public class OrderService {
         );
     }
 
+    @Transactional
+    public OrderResponse refund(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(orderId)
+                );
+
+        if (order.status() != OrderStatus.PAID) {
+            throw new IllegalOrderStatusException(
+                    orderId,
+                    order.status(),
+                    "退款订单"
+            );
+        }
+
+        boolean restocked = productRepository.restock(
+                order.productId(),
+                order.quantity()
+        );
+
+        if (!restocked) {
+            throw new IllegalStateException(
+                    "还库存失败，商品不存在，商品id： "
+                            + order.productId()
+            );
+        }
+
+        boolean statusUpdated = orderRepository.updateStatus(
+                orderId,
+                OrderStatus.REFUNDED
+        );
+
+        if (!statusUpdated) {
+            throw new IllegalStateException(
+                    "更新订单状态失败，订单id： " + orderId
+            );
+        }
+
+        Order refundedOrder = new Order(
+                order.id(),
+                order.productId(),
+                order.quantity(),
+                order.totalAmount(),
+                OrderStatus.REFUNDED
+        );
+
+        return new OrderResponse(
+                refundedOrder.id(),
+                refundedOrder.productId(),
+                refundedOrder.quantity(),
+                refundedOrder.totalAmount(),
+                refundedOrder.status()
+        );
+    }
+
     public List<OrderResponse> list() {
         return orderRepository.findAll()
                 .stream()

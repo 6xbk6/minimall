@@ -52,6 +52,14 @@ public class OrderController {
         return orderService.pay(id);
     }
 
+    @PostMapping("/{id}/refund")
+    public OrderResponse refund(
+            @PathVariable(name = "id") Long id
+    ) {
+        return orderService.refund(id);
+    }
+
+
 //    @GetMapping
 //    public List<OrderResponse> list() {
 //        return orderService.list();

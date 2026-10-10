@@ -538,4 +538,83 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/orders/999"));
     }
 
+    @Test
+    void shouldRefundPaidOrder() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        // 下单 + 支付
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long orderId = orderIdNumber.longValue();
+
+        mockMvc.perform(post("/api/orders/{id}/pay", orderId))
+                .andExpect(status().isOk());
+
+        // 退款
+        mockMvc.perform(
+                        post("/api/orders/{id}/refund", orderId)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId))
+                .andExpect(jsonPath("$.status").value("REFUNDED"));
+
+        // 库存还回 100
+        mockMvc.perform(get("/api/products/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(100));
+    }
+
+    @Test
+    void shouldRejectRefundingCreatedOrder() throws Exception {
+        String placeBody = """
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        // 只下单不支付：状态 CREATED
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long orderId = orderIdNumber.longValue();
+
+        // 退款被拒
+        mockMvc.perform(
+                        post("/api/orders/{id}/refund", orderId)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("ILLEGAL_ORDER_STATUS"));
+
+        // 库存保持扣减后的 98，没有被错误还回
+        mockMvc.perform(get("/api/products/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stock").value(98));
+    }
+
 }

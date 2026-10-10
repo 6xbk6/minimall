@@ -49,7 +49,7 @@ CREATE TABLE purchase_order (
         CHECK (total_amount >= 0),
 
     CONSTRAINT chk_order_status
-        CHECK (status IN ('CREATED', 'PAID', 'CANCELLED')),
+        CHECK (status IN ('CREATED', 'PAID', 'CANCELLED', 'REFUNDED')),
 
     CONSTRAINT fk_order_product
         FOREIGN KEY (product_id) REFERENCES product (id)

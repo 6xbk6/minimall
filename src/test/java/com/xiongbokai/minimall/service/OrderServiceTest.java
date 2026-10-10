@@ -519,4 +519,96 @@ class OrderServiceTest {
         );
     }
 
+    @Test
+    void shouldRefundPaidOrderAndRestock() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.PAID
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+        when(productRepository.restock(1L, 2))
+                .thenReturn(true);
+        when(orderRepository.updateStatus(
+                10L, OrderStatus.REFUNDED))
+                .thenReturn(true);
+
+        OrderResponse response = orderService.refund(10L);
+
+        verify(productRepository).restock(1L, 2);
+        verify(orderRepository).updateStatus(
+                10L, OrderStatus.REFUNDED
+        );
+        assertEquals(OrderStatus.REFUNDED.name(),
+                response.status().name());
+    }
+
+    @Test
+    void shouldRejectRefundWhenOrderMissing() {
+        when(orderRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                OrderNotFoundException.class,
+                () -> orderService.refund(999L)
+        );
+
+        verify(productRepository, never())
+                .restock(any(), anyInt());
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldRejectRefundWhenOrderCreated() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.CREATED
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalOrderStatusException.class,
+                () -> orderService.refund(10L)
+        );
+
+        verify(productRepository, never())
+                .restock(any(), anyInt());
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldRejectRefundWhenOrderAlreadyRefunded() {
+        Order order = new Order(
+                10L,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.REFUNDED
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalOrderStatusException.class,
+                () -> orderService.refund(10L)
+        );
+
+        verify(productRepository, never())
+                .restock(any(), anyInt());
+        verify(orderRepository, never())
+                .updateStatus(any(), any());
+    }
+
 }
