@@ -1,6 +1,7 @@
 package com.xiongbokai.minimall.repository;
 
 import com.xiongbokai.minimall.domain.order.Order;
+import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 
 import java.util.List;
@@ -27,5 +28,7 @@ public interface OrderRepository {
     );
 
     long countByStatus(OrderStatus status);
+
+    Optional<OrderDetail> findDetailById(Long id);
 
 }

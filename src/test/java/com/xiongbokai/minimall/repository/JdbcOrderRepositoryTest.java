@@ -1,6 +1,7 @@
 package com.xiongbokai.minimall.repository;
 
 import com.xiongbokai.minimall.domain.order.Order;
+import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -186,6 +188,35 @@ class JdbcOrderRepositoryTest {
                 repository.findPageByStatus(OrderStatus.CREATED, 0, 2);
 
         assertEquals(2, createdPage.size());
+    }
+
+    @Test
+    void shouldFindOrderDetailWithProductNameByJoin() {
+        Order order = repository.save(new Order(
+                null,
+                1L,
+                2,
+                new BigDecimal("798.00"),
+                OrderStatus.CREATED
+        ));
+
+        Optional<OrderDetail> detail =
+                repository.findDetailById(order.id());
+
+        assertTrue(detail.isPresent());
+        assertEquals("机械键盘", detail.get().productName());
+        assertEquals(2, detail.get().quantity());
+        assertEquals(new BigDecimal("798.00"),
+                detail.get().totalAmount());
+        assertEquals(OrderStatus.CREATED, detail.get().status());
+    }
+
+    @Test
+    void shouldReturnEmptyWhenOrderDetailNotFound() {
+        Optional<OrderDetail> detail =
+                repository.findDetailById(999L);
+
+        assertTrue(detail.isEmpty());
     }
 
 }

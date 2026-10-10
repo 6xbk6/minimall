@@ -1,5 +1,6 @@
 package com.xiongbokai.minimall.service;
 
+import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
@@ -435,51 +436,87 @@ class OrderServiceTest {
                 .findPageByStatus(any(), anyInt(), anyInt());
     }
 
+//    @Test
+//    void shouldReturnOrderDetailWithProductName() {
+//        Order order = new Order(
+//                10L,
+//                1L,
+//                2,
+//                new BigDecimal("798.00"),
+//                OrderStatus.CREATED
+//        );
+//
+//        Product product = new Product(
+//                1L,
+//                "机械键盘",
+//                new BigDecimal("399.00"),
+//                100,
+//                ProductStatus.ON_SALE
+//        );
+//
+//        when(orderRepository.findById(10L))
+//                .thenReturn(Optional.of(order));
+//        when(productRepository.findById(1L))
+//                .thenReturn(Optional.of(product));
+//
+//        OrderDetailResponse detail =
+//                orderService.getOrderDetail(10L);
+//
+//        assertEquals("机械键盘", detail.productName());
+//        assertEquals(2, detail.quantity());
+//        assertEquals(new BigDecimal("798.00"),
+//                detail.totalAmount());
+//        assertEquals(OrderStatus.CREATED, detail.status());
+//    }
+
     @Test
     void shouldReturnOrderDetailWithProductName() {
-        Order order = new Order(
+        OrderDetail detail = new OrderDetail(
                 10L,
                 1L,
+                "机械键盘",
                 2,
                 new BigDecimal("798.00"),
                 OrderStatus.CREATED
         );
 
-        Product product = new Product(
-                1L,
-                "机械键盘",
-                new BigDecimal("399.00"),
-                100,
-                ProductStatus.ON_SALE
-        );
+        when(orderRepository.findDetailById(10L))
+                .thenReturn(Optional.of(detail));
 
-        when(orderRepository.findById(10L))
-                .thenReturn(Optional.of(order));
-        when(productRepository.findById(1L))
-                .thenReturn(Optional.of(product));
-
-        OrderDetailResponse detail =
+        OrderDetailResponse response =
                 orderService.getOrderDetail(10L);
 
-        assertEquals("机械键盘", detail.productName());
-        assertEquals(2, detail.quantity());
+        assertEquals("机械键盘", response.productName());
+        assertEquals(2, response.quantity());
         assertEquals(new BigDecimal("798.00"),
-                detail.totalAmount());
-        assertEquals(OrderStatus.CREATED, detail.status());
+                response.totalAmount());
+        assertEquals(OrderStatus.CREATED, response.status());
     }
+
+
+//    @Test
+//    void shouldThrowWhenOrderMissingForDetail() {
+//        when(orderRepository.findById(999L))
+//                .thenReturn(Optional.empty());
+//
+//        assertThrows(
+//                OrderNotFoundException.class,
+//                () -> orderService.getOrderDetail(999L)
+//        );
+//
+//        // 订单都没有，就不该再查商品
+//        verify(productRepository, never()).findById(any());
+//    }
 
     @Test
     void shouldThrowWhenOrderMissingForDetail() {
-        when(orderRepository.findById(999L))
+        when(orderRepository.findDetailById(999L))
                 .thenReturn(Optional.empty());
 
         assertThrows(
                 OrderNotFoundException.class,
                 () -> orderService.getOrderDetail(999L)
         );
-
-        // 订单都没有，就不该再查商品
-        verify(productRepository, never()).findById(any());
     }
 
 }

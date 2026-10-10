@@ -1,5 +1,6 @@
 package com.xiongbokai.minimall.service;
 
+import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
@@ -300,26 +301,42 @@ public class OrderService {
         );
     }
 
+//    public OrderDetailResponse getOrderDetail(Long orderId) {
+//        Order order = orderRepository.findById(orderId)
+//                .orElseThrow(() ->
+//                        new OrderNotFoundException(orderId)
+//                );
+//
+//        Product product = productRepository.findById(order.productId())
+//                .orElseThrow(() ->
+//                        new ProductNotFoundException(order.productId())
+//                );
+//
+//        return new OrderDetailResponse(
+//                order.id(),
+//                order.productId(),
+//                product.name(),
+//                order.quantity(),
+//                order.totalAmount(),
+//                order.status()
+//        );
+//    }
+
     public OrderDetailResponse getOrderDetail(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        OrderDetail detail = orderRepository
+                .findDetailById(orderId)
                 .orElseThrow(() ->
                         new OrderNotFoundException(orderId)
                 );
 
-        Product product = productRepository.findById(order.productId())
-                .orElseThrow(() ->
-                        new ProductNotFoundException(order.productId())
-                );
-
         return new OrderDetailResponse(
-                order.id(),
-                order.productId(),
-                product.name(),
-                order.quantity(),
-                order.totalAmount(),
-                order.status()
+                detail.id(),
+                detail.productId(),
+                detail.productName(),
+                detail.quantity(),
+                detail.totalAmount(),
+                detail.status()
         );
     }
-
 
 }

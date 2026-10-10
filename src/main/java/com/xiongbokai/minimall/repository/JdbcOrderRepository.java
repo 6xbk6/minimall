@@ -1,6 +1,7 @@
 package com.xiongbokai.minimall.repository;
 
 import com.xiongbokai.minimall.domain.order.Order;
+import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -27,6 +28,19 @@ public class JdbcOrderRepository implements OrderRepository {
             resultSet.getBigDecimal("total_amount"),
             OrderStatus.valueOf(resultSet.getString("status"))
     );
+
+    private final RowMapper<OrderDetail> orderDetailRowMapper = (
+            resultSet,
+            rowNumber
+    ) -> new OrderDetail(
+            resultSet.getLong("id"),
+            resultSet.getLong("product_id"),
+            resultSet.getString("product_name"),
+            resultSet.getInt("quantity"),
+            resultSet.getBigDecimal("total_amount"),
+            OrderStatus.valueOf(resultSet.getString("status"))
+    );
+
 
     public JdbcOrderRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -195,6 +209,29 @@ public class JdbcOrderRepository implements OrderRepository {
         );
 
         return count == null ? 0L : count;
+    }
+
+    @Override
+    public Optional<OrderDetail> findDetailById(Long id) {
+        String sql = """
+            SELECT o.id,
+                   o.product_id,
+                   p.name AS product_name,
+                   o.quantity,
+                   o.total_amount,
+                   o.status
+            FROM purchase_order o
+            JOIN product p ON p.id = o.product_id
+            WHERE o.id = ?
+            """;
+
+        List<OrderDetail> details = jdbcTemplate.query(
+                sql,
+                orderDetailRowMapper,
+                id
+        );
+
+        return details.stream().findFirst();
     }
 
 }
