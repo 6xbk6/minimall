@@ -36,4 +36,34 @@ class JdbcCustomerRepositoryTest {
 
         assertTrue(customer.isEmpty());
     }
+
+    @Test
+    void shouldSaveCustomerAndReturnId() {
+        Customer saved = customerRepository.save(
+                new Customer(null, "alice")
+        );
+
+        assertTrue(saved.id() != null);
+        assertEquals("alice", saved.username());
+    }
+
+    @Test
+    void shouldFindCustomerByUsername() {
+        customerRepository.save(new Customer(null, "alice"));
+
+        Optional<Customer> customer =
+                customerRepository.findByUsername("alice");
+
+        assertTrue(customer.isPresent());
+        assertEquals("alice", customer.get().username());
+    }
+
+    @Test
+    void shouldReturnEmptyWhenUsernameMissing() {
+        Optional<Customer> customer =
+                customerRepository.findByUsername("nobody");
+
+        assertTrue(customer.isEmpty());
+    }
+
 }

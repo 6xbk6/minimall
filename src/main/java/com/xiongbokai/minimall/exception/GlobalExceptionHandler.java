@@ -70,6 +70,23 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(CustomerAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleCustomerAlreadyExists(
+            CustomerAlreadyExistsException exception,
+            HttpServletRequest request
+    ) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.CONFLICT.value(),
+                "CUSTOMER_ALREADY_EXISTS",
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
 
     @ExceptionHandler(IllegalOrderStatusException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalOrderStatus(
