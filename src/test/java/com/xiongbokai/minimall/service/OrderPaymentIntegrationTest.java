@@ -25,7 +25,7 @@ class OrderPaymentIntegrationTest {
     @Test
     void shouldPayOrderWithoutChangingStock() {
         // 下单：库存 100 → 97
-        OrderResponse placedOrder = orderService.placeOrder(1L, 3);
+        OrderResponse placedOrder = orderService.placeOrder(1L, 1L, 3);
 
         // 支付
         OrderResponse paidOrder = orderService.pay(placedOrder.id());

@@ -32,7 +32,7 @@ class PlaceOrderIntegrationTest {
 
     @Test
     void shouldCreateOrderAndDeductStockTogether() {
-        OrderResponse response = orderService.placeOrder(1L, 3);
+        OrderResponse response = orderService.placeOrder(1L, 1L, 3);
 
         assertEquals(1L, response.productId());
         assertEquals(3, response.quantity());
@@ -55,7 +55,7 @@ class PlaceOrderIntegrationTest {
     void shouldLeaveNoOrderWhenStockIsInsufficient() {
         assertThrows(
                 InsufficientStockException.class,
-                () -> orderService.placeOrder(2L, 1)
+                () -> orderService.placeOrder(1L, 2L, 1)
         );
 
         assertEquals(0, orderRepository.findAll().size());

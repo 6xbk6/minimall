@@ -34,6 +34,7 @@ class OrderControllerTest {
     void shouldPlaceOrder() throws Exception {
         String requestBody = """
             {
+              "buyerId": 1,
               "productId": 1,
               "quantity": 2
             }
@@ -65,6 +66,7 @@ class OrderControllerTest {
     void shouldReturnErrorWhenStockIsInsufficient() throws Exception {
         String requestBody = """
             {
+              "buyerId": 1,
               "productId": 2,
               "quantity": 1
             }
@@ -90,6 +92,7 @@ class OrderControllerTest {
     void shouldReturnNotFoundWhenProductMissing() throws Exception {
         String requestBody = """
             {
+              "buyerId": 1,
               "productId": 999,
               "quantity": 1
             }
@@ -111,6 +114,7 @@ class OrderControllerTest {
 
         String requestBody = """
             {
+              "buyerId": 1,
               "productId": 1,
               "quantity": 0
             }
@@ -136,6 +140,7 @@ class OrderControllerTest {
         // 先下单
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 2
         }
@@ -192,6 +197,7 @@ class OrderControllerTest {
     void shouldRejectCancellingOrderTwice() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 2
         }
@@ -237,6 +243,7 @@ class OrderControllerTest {
     void shouldPayOrder() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 2
         }
@@ -285,6 +292,7 @@ class OrderControllerTest {
     void shouldRejectPayingOrderTwice() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 2
         }
@@ -330,6 +338,7 @@ class OrderControllerTest {
         for (int i = 0; i < 3; i++) {
             String placeBody = """
             {
+              "buyerId": 1,
               "productId": 1,
               "quantity": 1
             }
@@ -358,6 +367,7 @@ class OrderControllerTest {
         for (int i = 0; i < 3; i++) {
             String placeBody = """
             {
+              "buyerId": 1,
               "productId": 1,
               "quantity": 1
             }
@@ -401,6 +411,7 @@ class OrderControllerTest {
     void shouldFilterOrdersByStatus() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 1
         }
@@ -451,6 +462,7 @@ class OrderControllerTest {
     void shouldReturnAllOrdersWhenStatusAbsent() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 1
         }
@@ -500,6 +512,7 @@ class OrderControllerTest {
     void shouldReturnOrderDetail() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 2
         }
@@ -542,6 +555,7 @@ class OrderControllerTest {
     void shouldRefundPaidOrder() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 2
         }
@@ -583,6 +597,7 @@ class OrderControllerTest {
     void shouldRejectRefundingCreatedOrder() throws Exception {
         String placeBody = """
         {
+          "buyerId": 1,
           "productId": 1,
           "quantity": 2
         }
@@ -615,6 +630,58 @@ class OrderControllerTest {
         mockMvc.perform(get("/api/products/{id}", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stock").value(98));
+    }
+
+    @Test
+    void shouldReturn404WhenBuyerMissingOnPlaceOrder() throws Exception {
+        String requestBody = """
+        {
+          "buyerId": 999,
+          "productId": 1,
+          "quantity": 1
+        }
+        """;
+
+        mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value("CUSTOMER_NOT_FOUND"))
+                .andExpect(jsonPath("$.path").value("/api/orders"));
+    }
+
+    @Test
+    void shouldReturnOrderDetailWithBuyerName() throws Exception {
+        String placeBody = """
+        {
+          "buyerId": 1,
+          "productId": 1,
+          "quantity": 2
+        }
+        """;
+
+        MvcResult placeResult = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(placeBody)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number orderIdNumber = JsonPath.read(
+                placeResult.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long orderId = orderIdNumber.longValue();
+
+        // 详情带买家名
+        mockMvc.perform(get("/api/orders/{id}", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.buyerId").value(1))
+                .andExpect(jsonPath("$.buyerName").value("demo_user"));
     }
 
 }

@@ -24,7 +24,7 @@ class OrderDetailIntegrationTest {
     @Test
     void shouldReturnDetailWithProductSnapshot() {
         // 真实下单：商品 1（机械键盘 399）买 2 件
-        OrderResponse placed = orderService.placeOrder(1L, 2);
+        OrderResponse placed = orderService.placeOrder(1L, 1L, 2);
 
         OrderDetailResponse detail =
                 orderService.getOrderDetail(placed.id());
@@ -36,5 +36,7 @@ class OrderDetailIntegrationTest {
         assertEquals(new BigDecimal("798.00"),
                 detail.totalAmount());
         assertEquals(OrderStatus.CREATED, detail.status());
+        assertEquals(1L, detail.buyerId());
+        assertEquals("demo_user", detail.buyerName());
     }
 }

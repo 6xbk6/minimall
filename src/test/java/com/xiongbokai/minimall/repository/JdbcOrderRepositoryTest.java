@@ -35,7 +35,8 @@ class JdbcOrderRepositoryTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         );
 
         Order savedOrder = repository.save(order);
@@ -62,7 +63,8 @@ class JdbcOrderRepositoryTest {
                 2L,
                 1,
                 new BigDecimal("129.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         ));
 
         Order order = repository.findById(savedOrder.id()).orElseThrow();
@@ -77,14 +79,16 @@ class JdbcOrderRepositoryTest {
                 1L,
                 1,
                 new BigDecimal("399.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         ));
         repository.save(new Order(
                 null,
                 3L,
                 1,
                 new BigDecimal("259.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         ));
 
         List<Order> orders = repository.findAll();
@@ -99,7 +103,8 @@ class JdbcOrderRepositoryTest {
                 1L,
                 1,
                 new BigDecimal("399.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         );
 
         Order secondOrder = new Order(
@@ -107,7 +112,8 @@ class JdbcOrderRepositoryTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         );
 
         repository.save(firstOrder);
@@ -126,7 +132,8 @@ class JdbcOrderRepositoryTest {
                     1L,
                     i,
                     new BigDecimal(String.valueOf(399L * i)),
-                    OrderStatus.CREATED
+                    OrderStatus.CREATED,
+                    1L
             ));
         }
 
@@ -150,12 +157,14 @@ class JdbcOrderRepositoryTest {
         repository.save(new Order(
                 null, 1L, 1,
                 new BigDecimal("399.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         ));
         repository.save(new Order(
                 null, 1L, 2,
                 new BigDecimal("798.00"),
-                OrderStatus.PAID
+                OrderStatus.PAID,
+                1L
         ));
 
         assertEquals(1L, repository.countByStatus(OrderStatus.CREATED));
@@ -169,13 +178,15 @@ class JdbcOrderRepositoryTest {
             repository.save(new Order(
                     null, 1L, i,
                     new BigDecimal("399.00"),
-                    OrderStatus.CREATED
+                    OrderStatus.CREATED,
+                    1L
             ));
         }
         repository.save(new Order(
                 null, 1L, 9,
                 new BigDecimal("399.00"),
-                OrderStatus.PAID
+                OrderStatus.PAID,
+                1L
         ));
 
         List<Order> paidOrders =
@@ -197,7 +208,8 @@ class JdbcOrderRepositoryTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         ));
 
         Optional<OrderDetail> detail =
@@ -209,6 +221,9 @@ class JdbcOrderRepositoryTest {
         assertEquals(new BigDecimal("798.00"),
                 detail.get().totalAmount());
         assertEquals(OrderStatus.CREATED, detail.get().status());
+        assertEquals(1L, detail.get().buyerId());
+        assertEquals("demo_user", detail.get().buyerName());
+
     }
 
     @Test

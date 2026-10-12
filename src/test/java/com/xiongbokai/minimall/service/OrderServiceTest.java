@@ -1,17 +1,16 @@
 package com.xiongbokai.minimall.service;
 
+import com.xiongbokai.minimall.domain.customer.Customer;
 import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
-import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
-import com.xiongbokai.minimall.exception.OrderNotFoundException;
+import com.xiongbokai.minimall.exception.*;
 import com.xiongbokai.minimall.domain.product.Product;
 import com.xiongbokai.minimall.domain.product.ProductStatus;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
-import com.xiongbokai.minimall.exception.InsufficientStockException;
-import com.xiongbokai.minimall.exception.ProductNotFoundException;
 import com.xiongbokai.minimall.domain.order.Order;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
+import com.xiongbokai.minimall.repository.CustomerRepository;
 import com.xiongbokai.minimall.repository.OrderRepository;
 import com.xiongbokai.minimall.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
@@ -42,11 +41,19 @@ class OrderServiceTest {
     @Mock
     private OrderRepository orderRepository;
 
+    @Mock
+    private CustomerRepository customerRepository;
+
     @InjectMocks
     private OrderService orderService;
 
     @Test
     void shouldPlaceOrderSuccessfully() {
+        when(customerRepository.findById(1L))
+                .thenReturn(Optional.of(
+                        new Customer(1L, "demo_user")
+                ));
+
         Product product = new Product(
                 1L,
                 "机械键盘",
@@ -65,13 +72,14 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         );
 
         when(orderRepository.save(any(Order.class)))
                 .thenReturn(savedOrder);
 
-        OrderResponse response = orderService.placeOrder(1L, 2);
+        OrderResponse response = orderService.placeOrder(1L, 1L, 2);
 
         ArgumentCaptor<Order> orderCaptor =
                 ArgumentCaptor.forClass(Order.class);
@@ -100,12 +108,17 @@ class OrderServiceTest {
 
     @Test
     void shouldRejectOrderWhenProductMissing() {
+        when(customerRepository.findById(1L))
+                .thenReturn(Optional.of(
+                        new Customer(1L, "demo_user")
+                ));
+
         when(productRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
         assertThrows(
                 ProductNotFoundException.class,
-                () -> orderService.placeOrder(999L, 1)
+                () -> orderService.placeOrder(1L, 999L, 1)
         );
 
         verify(productRepository, never())
@@ -116,6 +129,11 @@ class OrderServiceTest {
 
     @Test
     void shouldRejectOrderWhenStockIsInsufficient() {
+        when(customerRepository.findById(1L))
+                .thenReturn(Optional.of(
+                        new Customer(1L, "demo_user")
+                ));
+
         Product product = new Product(
                 2L,
                 "无线鼠标",
@@ -131,7 +149,7 @@ class OrderServiceTest {
 
         assertThrows(
                 InsufficientStockException.class,
-                () -> orderService.placeOrder(2L, 5)
+                () -> orderService.placeOrder(1L, 2L, 5)
         );
 
         verify(orderRepository, never())
@@ -142,7 +160,7 @@ class OrderServiceTest {
     void shouldRejectOrderWhenQuantityIsLessThanOne() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.placeOrder(1L, 0)
+                () -> orderService.placeOrder(1L, 1L, 0)
         );
 
         verify(productRepository, never())
@@ -156,7 +174,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -200,7 +219,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CANCELLED
+                OrderStatus.CANCELLED,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -224,7 +244,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.PAID
+                OrderStatus.PAID,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -246,7 +267,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -282,7 +304,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.PAID
+                OrderStatus.PAID,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -304,7 +327,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CANCELLED
+                OrderStatus.CANCELLED,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -326,10 +350,10 @@ class OrderServiceTest {
                 List.of(
                         new Order(1L, 1L, 1,
                                 new BigDecimal("399.00"),
-                                OrderStatus.CREATED),
+                                OrderStatus.CREATED, 1L),
                         new Order(2L, 1L, 1,
                                 new BigDecimal("399.00"),
-                                OrderStatus.CREATED)
+                                OrderStatus.CREATED, 1L)
                 )
         );
 
@@ -352,7 +376,7 @@ class OrderServiceTest {
                 List.of(
                         new Order(11L, 1L, 1,
                                 new BigDecimal("399.00"),
-                                OrderStatus.CREATED)
+                                OrderStatus.CREATED, 1L)
                 )
         );
 
@@ -397,7 +421,8 @@ class OrderServiceTest {
                 List.of(new Order(
                         1L, 1L, 1,
                         new BigDecimal("399.00"),
-                        OrderStatus.PAID
+                        OrderStatus.PAID,
+                        1L
                 ))
         );
 
@@ -423,7 +448,8 @@ class OrderServiceTest {
                 List.of(new Order(
                         1L, 1L, 1,
                         new BigDecimal("399.00"),
-                        OrderStatus.CREATED
+                        OrderStatus.CREATED,
+                        1L
                 ))
         );
 
@@ -471,13 +497,24 @@ class OrderServiceTest {
 
     @Test
     void shouldReturnOrderDetailWithProductName() {
+//        OrderDetail detail = new OrderDetail(
+//                10L,
+//                1L,
+//                "机械键盘",
+//                2,
+//                new BigDecimal("798.00"),
+//                OrderStatus.CREATED
+//        );
+
         OrderDetail detail = new OrderDetail(
                 10L,
                 1L,
                 "机械键盘",
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L,
+                "demo_user"
         );
 
         when(orderRepository.findDetailById(10L))
@@ -491,6 +528,7 @@ class OrderServiceTest {
         assertEquals(new BigDecimal("798.00"),
                 response.totalAmount());
         assertEquals(OrderStatus.CREATED, response.status());
+        assertEquals("demo_user", response.buyerName());
     }
 
 
@@ -526,7 +564,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.PAID
+                OrderStatus.PAID,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -570,7 +609,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -594,7 +634,8 @@ class OrderServiceTest {
                 1L,
                 2,
                 new BigDecimal("798.00"),
-                OrderStatus.REFUNDED
+                OrderStatus.REFUNDED,
+                1L
         );
 
         when(orderRepository.findById(10L))
@@ -609,6 +650,22 @@ class OrderServiceTest {
                 .restock(any(), anyInt());
         verify(orderRepository, never())
                 .updateStatus(any(), any());
+    }
+
+    @Test
+    void shouldRejectPlaceOrderWhenBuyerMissing() {
+        when(customerRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                CustomerNotFoundException.class,
+                () -> orderService.placeOrder(999L, 1L, 1)
+        );
+
+        verify(productRepository, never())
+                .findById(any());
+        verify(orderRepository, never())
+                .save(any());
     }
 
 }

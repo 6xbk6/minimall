@@ -29,6 +29,7 @@ public class OrderController {
             @Valid @RequestBody OrderCreateRequest request
     ) {
         OrderResponse response = orderService.placeOrder(
+                request.buyerId(),
                 request.productId(),
                 request.quantity()
         );

@@ -34,7 +34,8 @@ class OrderPaginationIntegrationTest {
                     1L,
                     1,
                     new BigDecimal("399.00"),
-                    OrderStatus.CREATED
+                    OrderStatus.CREATED,
+                    1L
             ));
         }
 
@@ -65,12 +66,12 @@ class OrderPaginationIntegrationTest {
     void shouldFilterOrdersByStatusWithPagination() {
         // 3 笔 CREATED
         for (int i = 0; i < 3; i++) {
-            orderService.placeOrder(1L, 1);
+            orderService.placeOrder(1L, 1L, 1);
         }
 
         // 2 笔 PAID（下单后支付）
         for (int i = 0; i < 2; i++) {
-            OrderResponse placed = orderService.placeOrder(1L, 1);
+            OrderResponse placed = orderService.placeOrder(1L, 1L, 1);
             orderService.pay(placed.id());
         }
 

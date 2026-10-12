@@ -31,7 +31,7 @@ class OrderCancellationIntegrationTest {
     @Test
     void shouldRestoreStockAndCancelOrderTogether() {
         // 先下单：库存 100 → 97，产生 1 笔订单
-        OrderResponse placedOrder = orderService.placeOrder(1L, 3);
+        OrderResponse placedOrder = orderService.placeOrder(1L, 1L, 3);
 
         Integer stockBeforeCancel = jdbcTemplate.queryForObject(
                 "SELECT stock FROM product WHERE id = 1",
@@ -57,7 +57,7 @@ class OrderCancellationIntegrationTest {
 
     @Test
     void shouldNotCancelPaidOrderAndKeepStockUnchanged() {
-        OrderResponse placedOrder = orderService.placeOrder(1L, 2);
+        OrderResponse placedOrder = orderService.placeOrder(1L, 1L, 2);
 
         // 直接把订单改成 PAID，模拟已支付
         orderRepository.updateStatus(

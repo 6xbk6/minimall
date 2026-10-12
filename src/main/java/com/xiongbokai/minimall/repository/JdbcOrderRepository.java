@@ -26,7 +26,8 @@ public class JdbcOrderRepository implements OrderRepository {
             resultSet.getLong("product_id"),
             resultSet.getInt("quantity"),
             resultSet.getBigDecimal("total_amount"),
-            OrderStatus.valueOf(resultSet.getString("status"))
+            OrderStatus.valueOf(resultSet.getString("status")),
+            resultSet.getLong("buyer_id")
     );
 
     private final RowMapper<OrderDetail> orderDetailRowMapper = (
@@ -38,7 +39,10 @@ public class JdbcOrderRepository implements OrderRepository {
             resultSet.getString("product_name"),
             resultSet.getInt("quantity"),
             resultSet.getBigDecimal("total_amount"),
-            OrderStatus.valueOf(resultSet.getString("status"))
+            OrderStatus.valueOf(resultSet.getString("status")),
+            resultSet.getLong("buyer_id"),
+            resultSet.getString("buyer_name")
+
     );
 
 
@@ -49,8 +53,8 @@ public class JdbcOrderRepository implements OrderRepository {
     public Order save(Order order) {
         String sql = """
                 INSERT INTO purchase_order
-                    (product_id, quantity, total_amount, status)
-                VALUES (?, ?, ?, ?)
+                    (product_id, buyer_id, quantity, total_amount, status)
+                VALUES (?, ?, ?, ?, ?)
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -64,9 +68,10 @@ public class JdbcOrderRepository implements OrderRepository {
                             );
 
                     statement.setLong(1, order.productId());
-                    statement.setInt(2, order.quantity());
-                    statement.setBigDecimal(3, order.totalAmount());
-                    statement.setString(4, order.status().name());
+                    statement.setLong(2, order.buyerId());
+                    statement.setInt(3, order.quantity());
+                    statement.setBigDecimal(4, order.totalAmount());
+                    statement.setString(5, order.status().name());
 
                     return statement;
                 },
@@ -92,13 +97,14 @@ public class JdbcOrderRepository implements OrderRepository {
                 order.productId(),
                 order.quantity(),
                 order.totalAmount(),
-                order.status()
+                order.status(),
+                order.buyerId()
         );
     }
 
     public Optional<Order> findById(Long id) {
         String sql = """
-                SELECT id, product_id, quantity, total_amount, status
+                SELECT id, product_id, buyer_id, quantity, total_amount, status
                 FROM purchase_order
                 WHERE id = ?
                 """;
@@ -114,7 +120,7 @@ public class JdbcOrderRepository implements OrderRepository {
 
     public List<Order> findAll() {
         String sql = """
-                SELECT id, product_id, quantity, total_amount, status
+                SELECT id, product_id, buyer_id, quantity, total_amount, status
                 FROM purchase_order
                 ORDER BY id
                 """;
@@ -144,6 +150,7 @@ public class JdbcOrderRepository implements OrderRepository {
         String sql = """
             SELECT id,
                    product_id,
+                   buyer_id,
                    quantity,
                    total_amount,
                    status
@@ -175,6 +182,7 @@ public class JdbcOrderRepository implements OrderRepository {
         String sql = """
             SELECT id,
                    product_id,
+                   buyer_id,
                    quantity,
                    total_amount,
                    status
@@ -214,15 +222,18 @@ public class JdbcOrderRepository implements OrderRepository {
     @Override
     public Optional<OrderDetail> findDetailById(Long id) {
         String sql = """
-            SELECT o.id,
-                   o.product_id,
-                   p.name AS product_name,
-                   o.quantity,
-                   o.total_amount,
-                   o.status
-            FROM purchase_order o
-            JOIN product p ON p.id = o.product_id
-            WHERE o.id = ?
+                SELECT o.id,
+                       o.product_id,
+                       p.name AS product_name,
+                       o.quantity,
+                       o.total_amount,
+                       o.status,
+                       o.buyer_id,
+                       c.username AS buyer_name
+                FROM purchase_order o
+                JOIN product p ON p.id = o.product_id
+                JOIN customer c ON c.id = o.buyer_id
+                WHERE o.id = ?
             """;
 
         List<OrderDetail> details = jdbcTemplate.query(

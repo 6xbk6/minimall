@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotNull;
 
 public record OrderCreateRequest(
 
+        @NotNull(message = "买家id不能为空")
+        Long buyerId,
+
         @NotNull(message = "商品id不能为空")
         Long productId,
 

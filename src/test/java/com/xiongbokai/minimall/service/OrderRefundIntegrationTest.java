@@ -27,7 +27,7 @@ class OrderRefundIntegrationTest {
     @Test
     void shouldRestoreStockAndRefundPaidOrderTogether() {
         // 下单 + 支付：库存 100 → 97
-        OrderResponse placed = orderService.placeOrder(1L, 3);
+        OrderResponse placed = orderService.placeOrder(1L, 1L, 3);
         orderService.pay(placed.id());
 
         // 退款
@@ -55,7 +55,7 @@ class OrderRefundIntegrationTest {
     @Test
     void shouldNotRefundCreatedOrderAndKeepStockUnchanged() {
         // 只下单不支付：库存 100 → 98，状态 CREATED
-        OrderResponse placed = orderService.placeOrder(1L, 2);
+        OrderResponse placed = orderService.placeOrder(1L, 1L, 2);
 
         assertThrows(
                 IllegalOrderStatusException.class,

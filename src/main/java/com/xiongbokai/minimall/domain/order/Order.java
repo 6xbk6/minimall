@@ -7,6 +7,7 @@ public record Order(
         Long productId,
         int quantity,
         BigDecimal totalAmount,
-        OrderStatus status
+        OrderStatus status,
+        Long buyerId
 ) {
 }

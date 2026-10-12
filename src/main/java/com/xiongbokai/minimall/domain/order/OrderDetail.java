@@ -8,6 +8,8 @@ public record OrderDetail(
         String productName,
         int quantity,
         BigDecimal totalAmount,
-        OrderStatus status
+        OrderStatus status,
+        Long buyerId,
+        String buyerName
 ) {
 }

@@ -1,5 +1,7 @@
 package com.xiongbokai.minimall.service;
 
+import com.xiongbokai.minimall.domain.customer.Customer;
+import com.xiongbokai.minimall.exception.CustomerNotFoundException;
 import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
@@ -11,6 +13,7 @@ import com.xiongbokai.minimall.domain.product.Product;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
 import com.xiongbokai.minimall.exception.InsufficientStockException;
 import com.xiongbokai.minimall.exception.ProductNotFoundException;
+import com.xiongbokai.minimall.repository.CustomerRepository;
 import com.xiongbokai.minimall.repository.OrderRepository;
 import com.xiongbokai.minimall.repository.ProductRepository;
 import org.springframework.stereotype.Service;
@@ -24,17 +27,21 @@ public class OrderService {
 
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
+    private final CustomerRepository customerRepository;
 
     public OrderService(
             ProductRepository productRepository,
-            OrderRepository orderRepository
+            OrderRepository orderRepository,
+            CustomerRepository customerRepository
     ) {
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
+        this.customerRepository = customerRepository;
     }
 
     @Transactional
     public OrderResponse placeOrder(
+            Long buyerId,
             Long productId,
             int quantity
     ) {
@@ -43,6 +50,12 @@ public class OrderService {
                     "购买数量必须大于0"
             );
         }
+
+        Customer customer = customerRepository.findById(buyerId)
+                .orElseThrow(() ->
+                        new CustomerNotFoundException(buyerId)
+                );
+
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() ->
@@ -70,7 +83,8 @@ public class OrderService {
                 productId,
                 quantity,
                 totalAmount,
-                OrderStatus.CREATED
+                OrderStatus.CREATED,
+                buyerId
         );
 
         Order savedOrder = orderRepository.save(order);
@@ -80,7 +94,8 @@ public class OrderService {
                 savedOrder.productId(),
                 savedOrder.quantity(),
                 savedOrder.totalAmount(),
-                savedOrder.status()
+                savedOrder.status(),
+                savedOrder.buyerId()
         );
     }
 
@@ -127,7 +142,8 @@ public class OrderService {
                 order.productId(),
                 order.quantity(),
                 order.totalAmount(),
-                OrderStatus.CANCELLED
+                OrderStatus.CANCELLED,
+                order.buyerId()
         );
 
         return new OrderResponse(
@@ -135,7 +151,8 @@ public class OrderService {
                 cancelledOrder.productId(),
                 cancelledOrder.quantity(),
                 cancelledOrder.totalAmount(),
-                cancelledOrder.status()
+                cancelledOrder.status(),
+                cancelledOrder.buyerId()
         );
     }
 
@@ -170,7 +187,8 @@ public class OrderService {
                 order.productId(),
                 order.quantity(),
                 order.totalAmount(),
-                OrderStatus.PAID
+                OrderStatus.PAID,
+                order.buyerId()
         );
 
         return new OrderResponse(
@@ -178,7 +196,8 @@ public class OrderService {
                 paidOrder.productId(),
                 paidOrder.quantity(),
                 paidOrder.totalAmount(),
-                paidOrder.status()
+                paidOrder.status(),
+                paidOrder.buyerId()
         );
     }
 
@@ -225,7 +244,8 @@ public class OrderService {
                 order.productId(),
                 order.quantity(),
                 order.totalAmount(),
-                OrderStatus.REFUNDED
+                OrderStatus.REFUNDED,
+                order.buyerId()
         );
 
         return new OrderResponse(
@@ -233,7 +253,8 @@ public class OrderService {
                 refundedOrder.productId(),
                 refundedOrder.quantity(),
                 refundedOrder.totalAmount(),
-                refundedOrder.status()
+                refundedOrder.status(),
+                refundedOrder.buyerId()
         );
     }
 
@@ -245,7 +266,8 @@ public class OrderService {
                         order.productId(),
                         order.quantity(),
                         order.totalAmount(),
-                        order.status()
+                        order.status(),
+                        order.buyerId()
                 ))
                 .toList();
     }
@@ -343,7 +365,8 @@ public class OrderService {
                         order.productId(),
                         order.quantity(),
                         order.totalAmount(),
-                        order.status()
+                        order.status(),
+                        order.buyerId()
                 ))
                 .toList();
 
@@ -390,7 +413,9 @@ public class OrderService {
                 detail.productName(),
                 detail.quantity(),
                 detail.totalAmount(),
-                detail.status()
+                detail.status(),
+                detail.buyerId(),
+                detail.buyerName()
         );
     }
 
