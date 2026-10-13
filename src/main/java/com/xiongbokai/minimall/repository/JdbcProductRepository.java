@@ -10,6 +10,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -209,37 +210,90 @@ public class JdbcProductRepository implements ProductRepository {
         return affectedRows == 1;
     }
 
+//    @Override
+//    public List<Product> findPage(int offset, int limit) {
+//        String sql = """
+//            SELECT id,
+//                   name,
+//                   price,
+//                   stock,
+//                   status
+//            FROM product
+//            ORDER BY id
+//            LIMIT ?
+//            OFFSET ?
+//            """;
+//
+//        return jdbcTemplate.query(
+//                sql,
+//                productRowMapper,
+//                limit,
+//                offset
+//        );
+//    }
+
+//    @Override
+//    public long count() {
+//        String sql = "SELECT COUNT(*) FROM product";
+//
+//        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+//
+//        return count == null ? 0L : count;
+//    }
+
     @Override
-    public List<Product> findPage(int offset, int limit) {
-        String sql = """
-            SELECT id,
-                   name,
-                   price,
-                   stock,
-                   status
+    public List<Product> findPage(
+            ProductStatus status,
+            int offset,
+            int limit
+    ) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT id, name, price, stock, status
             FROM product
-            ORDER BY id
-            LIMIT ?
-            OFFSET ?
-            """;
+            WHERE 1 = 1
+            """);
+
+        List<Object> params = new ArrayList<>();
+
+        if (status != null) {
+            sql.append(" AND status = ?");
+            params.add(status.name());
+        }
+
+        sql.append(" ORDER BY id LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
 
         return jdbcTemplate.query(
-                sql,
+                sql.toString(),
                 productRowMapper,
-                limit,
-                offset
+                params.toArray()
         );
     }
 
     @Override
-    public long count() {
-        String sql = "SELECT COUNT(*) FROM product";
+    public long count(ProductStatus status) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT COUNT(*)
+            FROM product
+            WHERE 1 = 1
+            """);
 
-        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+        List<Object> params = new ArrayList<>();
+
+        if (status != null) {
+            sql.append(" AND status = ?");
+            params.add(status.name());
+        }
+
+        Long count = jdbcTemplate.queryForObject(
+                sql.toString(),
+                Long.class,
+                params.toArray()
+        );
 
         return count == null ? 0L : count;
     }
-
 
     @Override
     public void delete(Product product) {

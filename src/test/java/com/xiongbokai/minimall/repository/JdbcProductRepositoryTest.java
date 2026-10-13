@@ -203,7 +203,7 @@ class JdbcProductRepositoryTest {
 
     @Test
     void shouldCountProducts() {
-        long initialCount = repository.count();
+        long initialCount = repository.count(null);
 
         Product newProduct = new Product(
                 null,
@@ -215,23 +215,56 @@ class JdbcProductRepositoryTest {
 
         repository.save(newProduct);
 
-        long finalCount = repository.count();
+        long finalCount = repository.count(null);
 
         assertEquals(initialCount + 1, finalCount);
     }
 
     @Test
     void shouldReturnPagedProductsOrderedById() {
-        List<Product> firstPage = repository.findPage(0, 2);
+        List<Product> firstPage = repository.findPage(null, 0, 2);
 
         assertEquals(2, firstPage.size());
         assertEquals(1L, firstPage.get(0).id());
         assertEquals(2L, firstPage.get(1).id());
 
-        List<Product> secondPage = repository.findPage(2, 2);
+        List<Product> secondPage = repository.findPage(null, 2, 2);
 
         assertEquals(1, secondPage.size());
         assertEquals(3L, secondPage.get(0).id());
+    }
+
+    @Test
+    void shouldFilterProductsByStatus() {
+        // seed 数据里只有商品 1 是 ON_SALE
+        long onSaleCount = repository.count(ProductStatus.ON_SALE);
+
+        assertEquals(1L, onSaleCount);
+
+        List<Product> onSaleProducts =
+                repository.findPage(ProductStatus.ON_SALE, 0, 10);
+
+        assertEquals(1, onSaleProducts.size());
+        assertEquals(1L, onSaleProducts.get(0).id());
+        assertEquals(
+                ProductStatus.ON_SALE,
+                onSaleProducts.get(0).status()
+        );
+    }
+
+    @Test
+    void shouldReturnEmptyPageWhenNoProductMatchesStatus() {
+        long offShelfCount =
+                repository.count(ProductStatus.OFF_SHELF);
+
+        assertEquals(1L, offShelfCount);
+
+        // 组合验证：按状态筛选后分页（OFF_SHELF 只有 1 个，size 2 页内）
+        List<Product> offShelfPage =
+                repository.findPage(ProductStatus.OFF_SHELF, 0, 2);
+
+        assertEquals(1, offShelfPage.size());
+        assertEquals(3L, offShelfPage.get(0).id());
     }
 
 }

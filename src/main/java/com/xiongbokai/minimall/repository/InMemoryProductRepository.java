@@ -130,8 +130,14 @@ public class InMemoryProductRepository implements ProductRepository {
     }
 
     @Override
-    public List<Product> findPage(int offset, int limit) {
+    public List<Product> findPage(
+            ProductStatus status,
+            int offset,
+            int limit
+    ) {
         return products.stream()
+                .filter(product -> status == null
+                        || product.status() == status)
                 .sorted(Comparator.comparing(Product::id))
                 .skip(offset)
                 .limit(limit)
@@ -139,8 +145,11 @@ public class InMemoryProductRepository implements ProductRepository {
     }
 
     @Override
-    public long count() {
-        return products.size();
+    public long count(ProductStatus status) {
+        return products.stream()
+                .filter(product -> status == null
+                        || product.status() == status)
+                .count();
     }
 
 

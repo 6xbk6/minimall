@@ -452,5 +452,32 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/products"));
     }
 
+    @Test
+    void shouldFilterProductsByStatus() throws Exception {
+        // seed 数据：商品 1 ON_SALE、商品 2 OUT_OF_STOCK、商品 3 OFF_SHELF
+        mockMvc.perform(get("/api/products")
+                        .param("status", "ON_SALE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("ON_SALE"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        mockMvc.perform(get("/api/products")
+                        .param("status", "OFF_SHELF"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(3))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void shouldReturn400WhenStatusInvalid() throws Exception {
+        mockMvc.perform(get("/api/products")
+                        .param("status", "ABC"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"))
+                .andExpect(jsonPath("$.path").value("/api/products"));
+    }
 
 }

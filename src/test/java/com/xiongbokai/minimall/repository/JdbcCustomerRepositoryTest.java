@@ -10,8 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -44,7 +43,7 @@ class JdbcCustomerRepositoryTest {
                 new Customer(null, "alice")
         );
 
-        assertTrue(saved.id() != null);
+        assertNotNull(saved.id());
         assertEquals("alice", saved.username());
     }
 

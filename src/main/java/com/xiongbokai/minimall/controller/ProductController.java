@@ -53,11 +53,14 @@ public class ProductController {
 
     @GetMapping
     public PageResponse<ProductResponse> list(
+            @RequestParam(name = "status", required = false)
+            ProductStatus status,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        return productService.listProducts(page, size);
+        return productService.listProducts(status, page, size);
     }
+
 
 
     @PostMapping()
