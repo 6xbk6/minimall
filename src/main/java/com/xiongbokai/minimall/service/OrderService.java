@@ -317,8 +317,71 @@ public class OrderService {
 //        );
 //    }
 
+//    public PageResponse<OrderResponse> listOrders(
+//            OrderStatus status,
+//            int page,
+//            int size
+//    ) {
+//        if (page < 0) {
+//            throw new IllegalArgumentException(
+//                    "页码不能为负数，当前传入： " + page
+//            );
+//        }
+//
+//        if (size < 1 || size > 100) {
+//            throw new IllegalArgumentException(
+//                    "每页条数必须在 1 到 100 之间，当前传入： " + size
+//            );
+//        }
+//
+//        long totalElements;
+//        List<Order> pageData;
+//
+//        if (status == null) {
+//            // 没传状态 → 查全部（走原方法）
+//            totalElements = orderRepository.count();
+//            pageData = orderRepository.findPage(
+//                    page * size,
+//                    size
+//            );
+//        } else {
+//            // 传了状态 → 带筛选
+//            totalElements = orderRepository.countByStatus(status);
+//            pageData = orderRepository.findPageByStatus(
+//                    status,
+//                    page * size,
+//                    size
+//            );
+//        }
+//
+//        int totalPages = totalElements == 0
+//                ? 0
+//                : (int) Math.ceil((double) totalElements / size);
+//
+//        List<OrderResponse> content = pageData
+//                .stream()
+//                .map(order -> new OrderResponse(
+//                        order.id(),
+//                        order.productId(),
+//                        order.quantity(),
+//                        order.totalAmount(),
+//                        order.status(),
+//                        order.buyerId()
+//                ))
+//                .toList();
+//
+//        return new PageResponse<>(
+//                content,
+//                page,
+//                size,
+//                totalElements,
+//                totalPages
+//        );
+//    }
+
     public PageResponse<OrderResponse> listOrders(
             OrderStatus status,
+            Long buyerId,
             int page,
             int size
     ) {
@@ -334,29 +397,18 @@ public class OrderService {
             );
         }
 
-        long totalElements;
-        List<Order> pageData;
-
-        if (status == null) {
-            // 没传状态 → 查全部（走原方法）
-            totalElements = orderRepository.count();
-            pageData = orderRepository.findPage(
-                    page * size,
-                    size
-            );
-        } else {
-            // 传了状态 → 带筛选
-            totalElements = orderRepository.countByStatus(status);
-            pageData = orderRepository.findPageByStatus(
-                    status,
-                    page * size,
-                    size
-            );
-        }
+        long totalElements = orderRepository.count(status, buyerId);
 
         int totalPages = totalElements == 0
                 ? 0
                 : (int) Math.ceil((double) totalElements / size);
+
+        List<Order> pageData = orderRepository.findPage(
+                status,
+                buyerId,
+                page * size,
+                size
+        );
 
         List<OrderResponse> content = pageData
                 .stream()
@@ -378,6 +430,7 @@ public class OrderService {
                 totalPages
         );
     }
+
 
 //    public OrderDetailResponse getOrderDetail(Long orderId) {
 //        Order order = orderRepository.findById(orderId)

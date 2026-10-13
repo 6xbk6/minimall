@@ -684,4 +684,91 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.buyerName").value("demo_user"));
     }
 
+    @Test
+    void shouldFilterOrdersByBuyer() throws Exception {
+        String placeBody = """
+        {
+          "buyerId": 1,
+          "productId": 1,
+          "quantity": 1
+        }
+        """;
+
+        // 买家 1 下一单
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(placeBody))
+                .andExpect(status().isCreated());
+
+        // 买家 2 下一单
+        String buyer2Body = """
+        {
+          "buyerId": 2,
+          "productId": 1,
+          "quantity": 1
+        }
+        """;
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buyer2Body))
+                .andExpect(status().isCreated());
+
+        // 按买家 1 筛选：只有 1 笔
+        mockMvc.perform(get("/api/orders")
+                        .param("buyerId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].buyerId").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void shouldFilterOrdersByStatusAndBuyerTogether() throws Exception {
+        // 买家 1：先下一单（CREATED）
+        String body = """
+        {
+          "buyerId": 1,
+          "productId": 1,
+          "quantity": 1
+        }
+        """;
+
+        MvcResult firstPlace = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        // 买家 1：再下一单并支付（PAID）
+        MvcResult secondPlace = mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Number paidIdNumber = JsonPath.read(
+                secondPlace.getResponse().getContentAsString(),
+                "$.id"
+        );
+        Long paidOrderId = paidIdNumber.longValue();
+
+        mockMvc.perform(post("/api/orders/{id}/pay", paidOrderId))
+                .andExpect(status().isOk());
+
+        // 组合：买家 1 + PAID → 只有 1 笔，且是支付过的那笔
+        mockMvc.perform(get("/api/orders")
+                        .param("buyerId", "1")
+                        .param("status", "PAID"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(paidOrderId))
+                .andExpect(jsonPath("$.content[0].status").value("PAID"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
 }

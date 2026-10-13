@@ -70,11 +70,14 @@ public class OrderController {
     public PageResponse<OrderResponse> list(
             @RequestParam(name = "status", required = false)
             OrderStatus status,
+            @RequestParam(name = "buyerId", required = false)
+            Long buyerId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        return orderService.listOrders(status, page, size);
+        return orderService.listOrders(status, buyerId, page, size);
     }
+
 
     @GetMapping("/{id}")
     public OrderDetailResponse getOrderDetail(

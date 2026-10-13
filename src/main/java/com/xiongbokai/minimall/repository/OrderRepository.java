@@ -17,17 +17,26 @@ public interface OrderRepository {
 
     boolean updateStatus(Long id, OrderStatus status);
 
-    List<Order> findPage(int offset, int limit);
+//    List<Order> findPage(int offset, int limit);
 
-    long count();
+//    long count();
 
-    List<Order> findPageByStatus(
+//    List<Order> findPageByStatus(
+//            OrderStatus status,
+//            int offset,
+//            int limit
+//    );
+//
+//    long countByStatus(OrderStatus status);
+
+    List<Order> findPage(
             OrderStatus status,
+            Long buyerId,
             int offset,
             int limit
     );
 
-    long countByStatus(OrderStatus status);
+    long count(OrderStatus status, Long buyerId);
 
     Optional<OrderDetail> findDetailById(Long id);
 

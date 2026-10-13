@@ -10,6 +10,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -145,79 +146,145 @@ public class JdbcOrderRepository implements OrderRepository {
         return affectedRows == 1;
     }
 
+//    @Override
+//    public List<Order> findPage(int offset, int limit) {
+//        String sql = """
+//            SELECT id,
+//                   product_id,
+//                   buyer_id,
+//                   quantity,
+//                   total_amount,
+//                   status
+//            FROM purchase_order
+//            ORDER BY id
+//            LIMIT ?
+//            OFFSET ?
+//            """;
+//
+//        return jdbcTemplate.query(sql, orderRowMapper, limit, offset);
+//
+//    }
+//
+//    @Override
+//    public long count() {
+//        String sql = "SELECT COUNT(*) FROM purchase_order";
+//
+//        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+//
+//        return count == null ? 0L : count;
+//    }
+//
+//    @Override
+//    public List<Order> findPageByStatus(
+//            OrderStatus status,
+//            int offset,
+//            int limit
+//    ) {
+//        String sql = """
+//            SELECT id,
+//                   product_id,
+//                   buyer_id,
+//                   quantity,
+//                   total_amount,
+//                   status
+//            FROM purchase_order
+//            WHERE status = ?
+//            ORDER BY id
+//            LIMIT ?
+//            OFFSET ?
+//            """;
+//
+//        return jdbcTemplate.query(
+//                sql,
+//                orderRowMapper,
+//                status.name(),
+//                limit,
+//                offset
+//        );
+//    }
+//
+//    @Override
+//    public long countByStatus(OrderStatus status) {
+//        String sql = """
+//            SELECT COUNT(*)
+//            FROM purchase_order
+//            WHERE status = ?
+//            """;
+//
+//        Long count = jdbcTemplate.queryForObject(
+//                sql,
+//                Long.class,
+//                status.name()
+//        );
+//
+//        return count == null ? 0L : count;
+//    }
+
     @Override
-    public List<Order> findPage(int offset, int limit) {
-        String sql = """
-            SELECT id,
-                   product_id,
-                   buyer_id,
-                   quantity,
-                   total_amount,
-                   status
-            FROM purchase_order
-            ORDER BY id
-            LIMIT ?
-            OFFSET ?
-            """;
-
-        return jdbcTemplate.query(sql, orderRowMapper, limit, offset);
-
-    }
-
-    @Override
-    public long count() {
-        String sql = "SELECT COUNT(*) FROM purchase_order";
-
-        Long count = jdbcTemplate.queryForObject(sql, Long.class);
-
-        return count == null ? 0L : count;
-    }
-
-    @Override
-    public List<Order> findPageByStatus(
+    public List<Order> findPage(
             OrderStatus status,
+            Long buyerId,
             int offset,
             int limit
     ) {
-        String sql = """
-            SELECT id,
-                   product_id,
-                   buyer_id,
-                   quantity,
-                   total_amount,
-                   status
+        StringBuilder sql = new StringBuilder("""
+            SELECT id, product_id, buyer_id, quantity, total_amount, status
             FROM purchase_order
-            WHERE status = ?
-            ORDER BY id
-            LIMIT ?
-            OFFSET ?
-            """;
+            WHERE 1 = 1
+            """);
+
+        List<Object> params = new ArrayList<>();
+
+        if (status != null) {
+            sql.append(" AND status = ?");
+            params.add(status.name());
+        }
+
+        if (buyerId != null) {
+            sql.append(" AND buyer_id = ?");
+            params.add(buyerId);
+        }
+
+        sql.append(" ORDER BY id LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
 
         return jdbcTemplate.query(
-                sql,
+                sql.toString(),
                 orderRowMapper,
-                status.name(),
-                limit,
-                offset
+                params.toArray()
         );
     }
 
     @Override
-    public long countByStatus(OrderStatus status) {
-        String sql = """
+    public long count(OrderStatus status, Long buyerId) {
+        StringBuilder sql = new StringBuilder("""
             SELECT COUNT(*)
             FROM purchase_order
-            WHERE status = ?
-            """;
+            WHERE 1 = 1
+            """);
+
+        List<Object> params = new ArrayList<>();
+
+        if (status != null) {
+            sql.append(" AND status = ?");
+            params.add(status.name());
+        }
+
+        if (buyerId != null) {
+            sql.append(" AND buyer_id = ?");
+            params.add(buyerId);
+        }
 
         Long count = jdbcTemplate.queryForObject(
-                sql,
+                sql.toString(),
                 Long.class,
-                status.name()
+                params.toArray()
         );
 
         return count == null ? 0L : count;
     }
+
 
     @Override
     public Optional<OrderDetail> findDetailById(Long id) {

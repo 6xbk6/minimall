@@ -40,14 +40,14 @@ class OrderPaginationIntegrationTest {
         }
 
         PageResponse<OrderResponse> firstPage =
-                orderService.listOrders(null, 0, 10);
+                orderService.listOrders(null, null, 0, 10);
 
         assertEquals(10, firstPage.content().size());
         assertEquals(15L, firstPage.totalElements());
         assertEquals(2, firstPage.totalPages());
 
         PageResponse<OrderResponse> secondPage =
-                orderService.listOrders(null, 1, 10);
+                orderService.listOrders(null,null, 1, 10);
 
         assertEquals(5, secondPage.content().size());
     }
@@ -55,7 +55,7 @@ class OrderPaginationIntegrationTest {
     @Test
     void shouldReturnEmptyPageWhenNoOrders() {
         PageResponse<OrderResponse> page =
-                orderService.listOrders(null, 0, 10);
+                orderService.listOrders(null, null, 0, 10);
 
         assertEquals(0, page.content().size());
         assertEquals(0L, page.totalElements());
@@ -76,7 +76,7 @@ class OrderPaginationIntegrationTest {
         }
 
         PageResponse<OrderResponse> paidPage =
-                orderService.listOrders(OrderStatus.PAID, 0, 10);
+                orderService.listOrders(OrderStatus.PAID, null, 0, 10);
 
         assertEquals(2, paidPage.totalElements());
         assertEquals(2, paidPage.content().size());
@@ -86,9 +86,32 @@ class OrderPaginationIntegrationTest {
         );
 
         PageResponse<OrderResponse> createdPage =
-                orderService.listOrders(OrderStatus.CREATED, 0, 10);
+                orderService.listOrders(OrderStatus.CREATED, null, 0, 10);
 
         assertEquals(3, createdPage.totalElements());
+    }
+
+    @Test
+    void shouldFilterMyOrdersByBuyerAndStatus() {
+        // 买家 1：2 笔（1 CREATED + 1 PAID）
+        orderService.placeOrder(1L, 1L, 1);
+        OrderResponse paid = orderService.placeOrder(1L, 1L, 1);
+        orderService.pay(paid.id());
+
+        // 买家 2：1 笔
+        orderService.placeOrder(2L, 1L, 1);
+
+        // 买家 1 的全部订单
+        PageResponse<OrderResponse> myOrders =
+                orderService.listOrders(null, 1L, 0, 10);
+        assertEquals(2L, myOrders.totalElements());
+
+        // 买家 1 的 PAID 订单
+        PageResponse<OrderResponse> myPaid =
+                orderService.listOrders(
+                        OrderStatus.PAID, 1L, 0, 10
+                );
+        assertEquals(1L, myPaid.totalElements());
     }
 
 }

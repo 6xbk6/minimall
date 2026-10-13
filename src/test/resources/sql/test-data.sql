@@ -5,7 +5,11 @@ INSERT INTO customer (
 VALUES (
     1,
     'demo_user'
-);
+),
+       (
+           2,
+           'second_user'
+       );
 
 INSERT INTO product (id,
                      name,

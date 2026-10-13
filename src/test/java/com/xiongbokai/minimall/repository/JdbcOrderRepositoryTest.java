@@ -119,7 +119,7 @@ class JdbcOrderRepositoryTest {
         repository.save(firstOrder);
         repository.save(secondOrder);
 
-        long count = repository.count();
+        long count = repository.count(null, null);
 
         assertEquals(2L, count);
     }
@@ -138,14 +138,14 @@ class JdbcOrderRepositoryTest {
         }
 
         // 第一页：取 3 条
-        List<Order> firstPage = repository.findPage(0, 3);
+        List<Order> firstPage = repository.findPage(null,null,0, 3);
 
         assertEquals(3, firstPage.size());
         assertEquals(1, firstPage.get(0).quantity());
         assertEquals(3, firstPage.get(2).quantity());
 
         // 第二页：跳过 3 条，只剩 2 条
-        List<Order> secondPage = repository.findPage(3, 3);
+        List<Order> secondPage = repository.findPage(null, null,3, 3);
 
         assertEquals(2, secondPage.size());
         assertEquals(4, secondPage.get(0).quantity());
@@ -167,9 +167,9 @@ class JdbcOrderRepositoryTest {
                 1L
         ));
 
-        assertEquals(1L, repository.countByStatus(OrderStatus.CREATED));
-        assertEquals(1L, repository.countByStatus(OrderStatus.PAID));
-        assertEquals(0L, repository.countByStatus(OrderStatus.CANCELLED));
+        assertEquals(1L, repository.count(OrderStatus.CREATED, null));
+        assertEquals(1L, repository.count(OrderStatus.PAID, null));
+        assertEquals(0L, repository.count(OrderStatus.CANCELLED, null));
     }
 
     @Test
@@ -190,13 +190,13 @@ class JdbcOrderRepositoryTest {
         ));
 
         List<Order> paidOrders =
-                repository.findPageByStatus(OrderStatus.PAID, 0, 10);
+                repository.findPage(OrderStatus.PAID, null, 0, 10);
 
         assertEquals(1, paidOrders.size());
         assertEquals(OrderStatus.PAID, paidOrders.get(0).status());
 
         List<Order> createdPage =
-                repository.findPageByStatus(OrderStatus.CREATED, 0, 2);
+                repository.findPage(OrderStatus.CREATED, null, 0, 2);
 
         assertEquals(2, createdPage.size());
     }
@@ -232,6 +232,63 @@ class JdbcOrderRepositoryTest {
                 repository.findDetailById(999L);
 
         assertTrue(detail.isEmpty());
+    }
+
+    @Test
+    void shouldFilterOrdersByBuyer() {
+        repository.save(new Order(
+                null, 1L, 1,
+                new BigDecimal("399.00"),
+                OrderStatus.CREATED,
+                1L
+        ));
+        repository.save(new Order(
+                null, 1L, 1,
+                new BigDecimal("399.00"),
+                OrderStatus.CREATED,
+                2L
+        ));
+
+        long buyer1Count = repository.count(null, 1L);
+        assertEquals(1L, buyer1Count);
+
+        List<Order> buyer1Orders =
+                repository.findPage(null, 1L, 0, 10);
+        assertEquals(1, buyer1Orders.size());
+        assertEquals(1L, buyer1Orders.get(0).buyerId());
+    }
+
+    @Test
+    void shouldFilterOrdersByStatusAndBuyerTogether() {
+        repository.save(new Order(
+                null, 1L, 1,
+                new BigDecimal("399.00"),
+                OrderStatus.CREATED,
+                1L
+        ));
+        repository.save(new Order(
+                null, 1L, 1,
+                new BigDecimal("399.00"),
+                OrderStatus.PAID,
+                1L
+        ));
+        repository.save(new Order(
+                null, 1L, 1,
+                new BigDecimal("399.00"),
+                OrderStatus.PAID,
+                2L
+        ));
+
+        // 组合：买家 1 的 PAID 订单 → 只有 1 笔
+        long combinedCount =
+                repository.count(OrderStatus.PAID, 1L);
+        assertEquals(1L, combinedCount);
+
+        List<Order> combined =
+                repository.findPage(
+                        OrderStatus.PAID, 1L, 0, 10
+                );
+        assertEquals(1, combined.size());
     }
 
 }
