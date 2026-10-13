@@ -26,10 +26,11 @@ public interface ProductRepository {
 
     List<Product> findPage(
             ProductStatus status,
+            String keyword,
             int offset,
             int limit
     );
 
-    long count(ProductStatus status);
+    long count(ProductStatus status, String keyword);
 
 }

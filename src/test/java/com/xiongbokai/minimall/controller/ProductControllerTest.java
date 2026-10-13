@@ -480,4 +480,26 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/products"));
     }
 
+    @Test
+    void shouldFilterProductsByKeyword() throws Exception {
+        // seed 里只有"机械键盘"包含"键盘"
+        mockMvc.perform(get("/api/products")
+                        .param("keyword", "键盘"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("机械键盘"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void shouldReturnEmptyPageWhenKeywordNotFound() throws Exception {
+        mockMvc.perform(get("/api/products")
+                        .param("keyword", "不存在的商品"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
+    }
+
 }

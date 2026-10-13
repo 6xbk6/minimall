@@ -54,24 +54,24 @@ public class ProductService {
         this.productRepository = productRepository;
     }
 
-    public List<ProductResponse> list(
-            String keyword,
-            ProductStatus status
-    ) {
-        return productRepository.findAll()
-                .stream()
-                .filter(product ->
-                        keyword == null
-                                || keyword.isBlank()
-                                || product.name().contains(keyword)
-                )
-                .filter(product ->
-                        status == null
-                                || product.status() == status
-                )
-                .map(this::toResponse)
-                .toList();
-    }
+//    public List<ProductResponse> list(
+//            String keyword,
+//            ProductStatus status
+//    ) {
+//        return productRepository.findAll()
+//                .stream()
+//                .filter(product ->
+//                        keyword == null
+//                                || keyword.isBlank()
+//                                || product.name().contains(keyword)
+//                )
+//                .filter(product ->
+//                        status == null
+//                                || product.status() == status
+//                )
+//                .map(this::toResponse)
+//                .toList();
+//    }
 
     public ProductResponse getById(Long id) {
 //        return new ProductResponse(
@@ -320,6 +320,7 @@ public class ProductService {
 
     public PageResponse<ProductResponse> listProducts(
             ProductStatus status,
+            String keyword,
             int page,
             int size
     ) {
@@ -335,7 +336,7 @@ public class ProductService {
             );
         }
 
-        long totalElements = productRepository.count(status);
+        long totalElements = productRepository.count(status, keyword);
 
         int totalPages = totalElements == 0
                 ? 0
@@ -344,7 +345,7 @@ public class ProductService {
         int offset = page * size;
 
         List<ProductResponse> content = productRepository
-                .findPage(status, offset, size)
+                .findPage(status, keyword, offset, size)
                 .stream()
                 .map(product -> new ProductResponse(
                         product.id(),

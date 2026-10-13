@@ -132,12 +132,12 @@ public class InMemoryProductRepository implements ProductRepository {
     @Override
     public List<Product> findPage(
             ProductStatus status,
+            String keyword,
             int offset,
             int limit
     ) {
         return products.stream()
-                .filter(product -> status == null
-                        || product.status() == status)
+                .filter(product -> matches(product, status, keyword))
                 .sorted(Comparator.comparing(Product::id))
                 .skip(offset)
                 .limit(limit)
@@ -145,11 +145,27 @@ public class InMemoryProductRepository implements ProductRepository {
     }
 
     @Override
-    public long count(ProductStatus status) {
+    public long count(ProductStatus status, String keyword) {
         return products.stream()
-                .filter(product -> status == null
-                        || product.status() == status)
+                .filter(product -> matches(product, status, keyword))
                 .count();
+    }
+
+    private boolean matches(
+            Product product,
+            ProductStatus status,
+            String keyword
+    ) {
+        if (status != null && product.status() != status) {
+            return false;
+        }
+
+        if (keyword != null && !keyword.isBlank()) {
+            return product.name().toLowerCase()
+                    .contains(keyword.toLowerCase());
+        }
+
+        return true;
     }
 
 

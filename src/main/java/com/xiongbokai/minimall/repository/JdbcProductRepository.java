@@ -244,6 +244,7 @@ public class JdbcProductRepository implements ProductRepository {
     @Override
     public List<Product> findPage(
             ProductStatus status,
+            String keyword,
             int offset,
             int limit
     ) {
@@ -260,6 +261,11 @@ public class JdbcProductRepository implements ProductRepository {
             params.add(status.name());
         }
 
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND name LIKE ?");
+            params.add("%" + keyword + "%");
+        }
+
         sql.append(" ORDER BY id LIMIT ? OFFSET ?");
         params.add(limit);
         params.add(offset);
@@ -272,7 +278,7 @@ public class JdbcProductRepository implements ProductRepository {
     }
 
     @Override
-    public long count(ProductStatus status) {
+    public long count(ProductStatus status, String keyword) {
         StringBuilder sql = new StringBuilder("""
             SELECT COUNT(*)
             FROM product
@@ -284,6 +290,11 @@ public class JdbcProductRepository implements ProductRepository {
         if (status != null) {
             sql.append(" AND status = ?");
             params.add(status.name());
+        }
+
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND name LIKE ?");
+            params.add("%" + keyword + "%");
         }
 
         Long count = jdbcTemplate.queryForObject(

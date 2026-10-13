@@ -264,69 +264,6 @@ class ProductServiceTest {
     }
 
     @Test
-    void shouldFilterProductsByKeywordAndStatus() {
-        List<Product> products = List.of(
-                new Product(
-                        1L,
-                        "机械键盘",
-                        new BigDecimal("399.00"),
-                        100,
-                        ProductStatus.ON_SALE
-                ),
-                new Product(
-                        2L,
-                        "无线键盘",
-                        new BigDecimal("299.00"),
-                        0,
-                        ProductStatus.OUT_OF_STOCK
-                ),
-                new Product(
-                        3L,
-                        "机械鼠标",
-                        new BigDecimal("199.00"),
-                        50,
-                        ProductStatus.ON_SALE
-                ),
-                new Product(
-                        4L,
-                        "显示器支架",
-                        new BigDecimal("259.00"),
-                        100,
-                        ProductStatus.OFF_SHELF
-                )
-        );
-
-        when(productRepository.findAll())
-                .thenReturn(products);
-
-        List<ProductResponse> responses = productService.list(
-                "键盘",
-                ProductStatus.ON_SALE
-        );
-
-        assertEquals(1, responses.size());
-
-        ProductResponse response = responses.getFirst();
-
-        assertEquals(1L, response.id());
-        assertEquals("机械键盘", response.name());
-        assertEquals(
-                new BigDecimal("399.00"),
-                response.price()
-        );
-        assertEquals(
-                100,
-                response.stock()
-        );
-        assertEquals(
-                ProductStatus.ON_SALE,
-                response.status()
-        );
-
-        verify(productRepository).findAll();
-    }
-
-    @Test
     void shouldUpdateEntireProduct() {
         Product existingProduct = new Product(
                 1L,
@@ -398,7 +335,6 @@ class ProductServiceTest {
         );
     }
 
-//
     @Test
     void shouldDeductStockSuccessfully() {
         Product updatedProduct = new Product(
@@ -420,32 +356,6 @@ class ProductServiceTest {
         verify(productRepository).deductStock(1L, 3);
         assertEquals(97, response.stock());
     }
-
-//    @Test
-//    void shouldRejectDeductionWhenStockIsInsufficient() {
-//        Product product = new Product(
-//                2L,
-//                "无线鼠标",
-//                new BigDecimal("129.00"),
-//                1,
-//                ProductStatus.OUT_OF_STOCK
-//        );
-//
-//        when(productRepository.findById(2L))
-//                .thenReturn(Optional.of(product));
-//
-//        InsufficientStockException exception = assertThrows(
-//                InsufficientStockException.class,
-//                () -> productService.deductStock(2L, 5)
-//        );
-//
-//        assertEquals(2L, exception.getProductId());
-//        assertEquals(1, exception.getCurrentStock());
-//        assertEquals(5, exception.getRequestedQuantity());
-//
-//        verify(productRepository, never())
-//                .save(any(Product.class));
-//    }
 
     @Test
     void shouldRejectDeductionWhenStockIsInsufficient() {
@@ -492,8 +402,8 @@ class ProductServiceTest {
 
     @Test
     void shouldReturnFirstPageOfProducts() {
-        when(productRepository.count(null)).thenReturn(15L);
-        when(productRepository.findPage(null, 0, 10)).thenReturn(
+        when(productRepository.count(null, null)).thenReturn(15L);
+        when(productRepository.findPage(null, null, 0, 10)).thenReturn(
                 List.of(
                         new Product(1L, "机械键盘",
                                 new BigDecimal("399.00"),
@@ -505,7 +415,7 @@ class ProductServiceTest {
         );
 
         PageResponse<ProductResponse> page =
-                productService.listProducts(null, 0, 10);
+                productService.listProducts(null, null, 0, 10);
 
         assertEquals(2, page.content().size());
         assertEquals(0, page.page());
@@ -513,53 +423,54 @@ class ProductServiceTest {
         assertEquals(15L, page.totalElements());
         assertEquals(2, page.totalPages());
 
-        verify(productRepository).findPage(null,0, 10);
+        verify(productRepository).findPage(null, null, 0, 10);
     }
 
     @Test
     void shouldReturnSecondPageOfProducts() {
-        when(productRepository.count(null)).thenReturn(15L);
-        when(productRepository.findPage(null,10, 10)).thenReturn(
+        when(productRepository.count(null, null)).thenReturn(15L);
+        when(productRepository.findPage(null, null, 10, 10)).thenReturn(
                 List.of(new Product(11L, "显示器支架",
                         new BigDecimal("259.00"),
                         100, ProductStatus.OFF_SHELF))
         );
 
         PageResponse<ProductResponse> page =
-                productService.listProducts(null,1, 10);
+                productService.listProducts(null, null, 1, 10);
 
         assertEquals(1, page.content().size());
         assertEquals(2, page.totalPages());
 
-        verify(productRepository).findPage(null,10, 10);
+        verify(productRepository).findPage(null, null, 10, 10);
     }
 
     @Test
     void shouldRejectInvalidProductPageParams() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> productService.listProducts(null,-1, 10)
+                () -> productService.listProducts(null, null, -1, 10)
         );
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> productService.listProducts(null,0, 0)
+                () -> productService.listProducts(null, null, 0, 0)
         );
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> productService.listProducts(null,0, 101)
+                () -> productService.listProducts(null, null, 0, 101)
         );
 
-        verify(productRepository, never()).findPage(null,10, 10);
+        verify(productRepository, never())
+                .findPage(any(), any(), anyInt(), anyInt());
     }
 
     @Test
     void shouldFilterProductsByStatus() {
-        when(productRepository.count(ProductStatus.ON_SALE))
+        when(productRepository.count(ProductStatus.ON_SALE, null))
                 .thenReturn(1L);
         when(productRepository.findPage(
-                ProductStatus.ON_SALE, 0, 10
+                ProductStatus.ON_SALE, null, 0, 10
         )).thenReturn(
                 List.of(new Product(
                         1L, "机械键盘",
@@ -570,7 +481,7 @@ class ProductServiceTest {
 
         PageResponse<ProductResponse> page =
                 productService.listProducts(
-                        ProductStatus.ON_SALE, 0, 10
+                        ProductStatus.ON_SALE, null, 0, 10
                 );
 
         assertEquals(1L, page.totalElements());
@@ -581,27 +492,81 @@ class ProductServiceTest {
         );
 
         verify(productRepository)
-                .count(ProductStatus.ON_SALE);
+                .count(ProductStatus.ON_SALE, null);
         verify(productRepository)
-                .findPage(ProductStatus.ON_SALE, 0, 10);
+                .findPage(ProductStatus.ON_SALE, null, 0, 10);
     }
 
     @Test
     void shouldReturnEmptyPageWhenNoProductsMatchStatus() {
-        when(productRepository.count(ProductStatus.OFF_SHELF))
+        when(productRepository.count(ProductStatus.OFF_SHELF, null))
                 .thenReturn(0L);
         when(productRepository.findPage(
-                ProductStatus.OFF_SHELF, 0, 10
+                ProductStatus.OFF_SHELF, null, 0, 10
         )).thenReturn(List.of());
 
         PageResponse<ProductResponse> page =
                 productService.listProducts(
-                        ProductStatus.OFF_SHELF, 0, 10
+                        ProductStatus.OFF_SHELF, null, 0, 10
                 );
 
         assertEquals(0L, page.totalElements());
         assertEquals(0, page.content().size());
         assertEquals(0, page.totalPages());
+    }
+
+    @Test
+    void shouldFilterProductsByKeyword() {
+        when(productRepository.count(null, "键盘"))
+                .thenReturn(2L);
+        when(productRepository.findPage(null, "键盘", 0, 10))
+                .thenReturn(
+                        List.of(
+                                new Product(1L, "机械键盘",
+                                        new BigDecimal("399.00"),
+                                        100, ProductStatus.ON_SALE),
+                                new Product(4L, "无线键盘",
+                                        new BigDecimal("299.00"),
+                                        10, ProductStatus.ON_SALE)
+                        )
+                );
+
+        PageResponse<ProductResponse> page =
+                productService.listProducts(null, "键盘", 0, 10);
+
+        assertEquals(2L, page.totalElements());
+        assertEquals(2, page.content().size());
+
+        verify(productRepository).count(null, "键盘");
+        verify(productRepository).findPage(null, "键盘", 0, 10);
+    }
+
+    @Test
+    void shouldPassStatusAndKeywordTogether() {
+        when(productRepository.count(
+                ProductStatus.ON_SALE, "键盘"
+        )).thenReturn(1L);
+        when(productRepository.findPage(
+                ProductStatus.ON_SALE, "键盘", 0, 10
+        )).thenReturn(
+                List.of(new Product(
+                        1L, "机械键盘",
+                        new BigDecimal("399.00"),
+                        100, ProductStatus.ON_SALE
+                ))
+        );
+
+        PageResponse<ProductResponse> page =
+                productService.listProducts(
+                        ProductStatus.ON_SALE, "键盘", 0, 10
+                );
+
+        assertEquals(1L, page.totalElements());
+
+        verify(productRepository)
+                .count(ProductStatus.ON_SALE, "键盘");
+        verify(productRepository)
+                .findPage(ProductStatus.ON_SALE, "键盘", 0, 10);
     }
 
 }

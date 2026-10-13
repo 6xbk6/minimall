@@ -203,7 +203,7 @@ class JdbcProductRepositoryTest {
 
     @Test
     void shouldCountProducts() {
-        long initialCount = repository.count(null);
+        long initialCount = repository.count(null, null);
 
         Product newProduct = new Product(
                 null,
@@ -215,20 +215,22 @@ class JdbcProductRepositoryTest {
 
         repository.save(newProduct);
 
-        long finalCount = repository.count(null);
+        long finalCount = repository.count(null, null);
 
         assertEquals(initialCount + 1, finalCount);
     }
 
     @Test
     void shouldReturnPagedProductsOrderedById() {
-        List<Product> firstPage = repository.findPage(null, 0, 2);
+        List<Product> firstPage =
+                repository.findPage(null, null, 0, 2);
 
         assertEquals(2, firstPage.size());
         assertEquals(1L, firstPage.get(0).id());
         assertEquals(2L, firstPage.get(1).id());
 
-        List<Product> secondPage = repository.findPage(null, 2, 2);
+        List<Product> secondPage =
+                repository.findPage(null, null, 2, 2);
 
         assertEquals(1, secondPage.size());
         assertEquals(3L, secondPage.get(0).id());
@@ -236,13 +238,13 @@ class JdbcProductRepositoryTest {
 
     @Test
     void shouldFilterProductsByStatus() {
-        // seed 数据里只有商品 1 是 ON_SALE
-        long onSaleCount = repository.count(ProductStatus.ON_SALE);
+        long onSaleCount =
+                repository.count(ProductStatus.ON_SALE, null);
 
         assertEquals(1L, onSaleCount);
 
         List<Product> onSaleProducts =
-                repository.findPage(ProductStatus.ON_SALE, 0, 10);
+                repository.findPage(ProductStatus.ON_SALE, null, 0, 10);
 
         assertEquals(1, onSaleProducts.size());
         assertEquals(1L, onSaleProducts.get(0).id());
@@ -255,16 +257,63 @@ class JdbcProductRepositoryTest {
     @Test
     void shouldReturnEmptyPageWhenNoProductMatchesStatus() {
         long offShelfCount =
-                repository.count(ProductStatus.OFF_SHELF);
+                repository.count(ProductStatus.OFF_SHELF, null);
 
         assertEquals(1L, offShelfCount);
 
-        // 组合验证：按状态筛选后分页（OFF_SHELF 只有 1 个，size 2 页内）
         List<Product> offShelfPage =
-                repository.findPage(ProductStatus.OFF_SHELF, 0, 2);
+                repository.findPage(ProductStatus.OFF_SHELF, null, 0, 2);
 
         assertEquals(1, offShelfPage.size());
         assertEquals(3L, offShelfPage.get(0).id());
+    }
+
+    @Test
+    void shouldFilterProductsByKeyword() {
+        repository.save(new Product(
+                null,
+                "无线键盘",
+                new BigDecimal("299.00"),
+                10,
+                ProductStatus.ON_SALE
+        ));
+
+        // "键盘" 匹配：机械键盘 + 无线键盘 = 2 条
+        long count = repository.count(null, "键盘");
+
+        assertEquals(2L, count);
+
+        List<Product> products =
+                repository.findPage(null, "键盘", 0, 10);
+
+        assertEquals(2, products.size());
+        assertEquals("机械键盘", products.get(0).name());
+        assertEquals("无线键盘", products.get(1).name());
+    }
+
+    @Test
+    void shouldFilterProductsByStatusAndKeywordTogether() {
+        repository.save(new Product(
+                null,
+                "无线键盘",
+                new BigDecimal("299.00"),
+                10,
+                ProductStatus.OFF_SHELF
+        ));
+
+        // 组合：ON_SALE + "键盘" → 只有机械键盘
+        long count = repository.count(
+                ProductStatus.ON_SALE, "键盘"
+        );
+
+        assertEquals(1L, count);
+
+        List<Product> products = repository.findPage(
+                ProductStatus.ON_SALE, "键盘", 0, 10
+        );
+
+        assertEquals(1, products.size());
+        assertEquals("机械键盘", products.get(0).name());
     }
 
 }

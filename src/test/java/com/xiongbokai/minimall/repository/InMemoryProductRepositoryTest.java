@@ -113,7 +113,7 @@ class InMemoryProductRepositoryTest {
 
     @Test
     void shouldCountProductsInMemory() {
-        long initialCount = repository.count(null);
+        long initialCount = repository.count(null, null);
 
         Product newProduct = new Product(
                 null,
@@ -125,18 +125,18 @@ class InMemoryProductRepositoryTest {
 
         repository.save(newProduct);
 
-        long finalCount = repository.count(null);
+        long finalCount = repository.count(null, null);
 
         assertEquals(initialCount + 1, finalCount);
     }
 
     @Test
     void shouldReturnPagedProductsInMemory() {
-        List<Product> firstPage = repository.findPage(null, 0, 2);
+        List<Product> firstPage = repository.findPage(null, null, 0, 2);
 
         assertEquals(2, firstPage.size());
 
-        List<Product> secondPage = repository.findPage(null, 2, 2);
+        List<Product> secondPage = repository.findPage(null, null, 2, 2);
 
         assertEquals(1, secondPage.size());
         assertEquals(3L, secondPage.get(0).id());

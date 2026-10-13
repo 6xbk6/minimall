@@ -55,12 +55,13 @@ public class ProductController {
     public PageResponse<ProductResponse> list(
             @RequestParam(name = "status", required = false)
             ProductStatus status,
+            @RequestParam(name = "keyword", required = false)
+            String keyword,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        return productService.listProducts(status, page, size);
+        return productService.listProducts(status, keyword, page, size);
     }
-
 
 
     @PostMapping()
