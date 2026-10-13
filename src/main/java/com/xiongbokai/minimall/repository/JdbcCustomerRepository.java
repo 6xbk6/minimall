@@ -106,5 +106,31 @@ public class JdbcCustomerRepository implements CustomerRepository {
         return customers.stream().findFirst();
     }
 
+    @Override
+    public List<Customer> findPage(int offset, int limit) {
+        String sql = """
+            SELECT id, username
+            FROM customer
+            ORDER BY id
+            LIMIT ?
+            OFFSET ?
+            """;
+
+        return jdbcTemplate.query(
+                sql,
+                customerRowMapper,
+                limit,
+                offset
+        );
+    }
+
+    @Override
+    public long count() {
+        String sql = "SELECT COUNT(*) FROM customer";
+
+        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+
+        return count == null ? 0L : count;
+    }
 
 }

@@ -2,7 +2,9 @@ package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.customer.Customer;
 import com.xiongbokai.minimall.dto.response.CustomerResponse;
+import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.exception.CustomerAlreadyExistsException;
+import com.xiongbokai.minimall.exception.CustomerNotFoundException;
 import com.xiongbokai.minimall.repository.CustomerRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,4 +72,49 @@ class CustomerServiceTest {
         verify(customerRepository, never())
                 .save(any());
     }
+
+    @Test
+    void shouldReturnCustomerPage() {
+        when(customerRepository.count()).thenReturn(2L);
+        when(customerRepository.findPage(0, 10)).thenReturn(
+                List.of(
+                        new Customer(1L, "demo_user"),
+                        new Customer(2L, "alice")
+                )
+        );
+
+        PageResponse<CustomerResponse> page =
+                customerService.list(0, 10);
+
+        assertEquals(2, page.content().size());
+        assertEquals(2L, page.totalElements());
+        assertEquals(1, page.totalPages());
+
+        verify(customerRepository).findPage(0, 10);
+    }
+
+    @Test
+    void shouldReturnCustomerById() {
+        when(customerRepository.findById(1L))
+                .thenReturn(Optional.of(
+                        new Customer(1L, "demo_user")
+                ));
+
+        CustomerResponse response =
+                customerService.getById(1L);
+
+        assertEquals("demo_user", response.username());
+    }
+
+    @Test
+    void shouldThrowWhenCustomerMissingForDetail() {
+        when(customerRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                CustomerNotFoundException.class,
+                () -> customerService.getById(999L)
+        );
+    }
+
 }

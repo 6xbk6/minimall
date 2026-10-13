@@ -9,6 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -90,4 +91,47 @@ class CustomerControllerTest {
                 .andExpect(jsonPath("$.code")
                         .value("VALIDATION_FAILED"));
     }
+
+    @Test
+    void shouldListCustomers() throws Exception {
+        // seed 有 demo_user、second_user，再注册 alice → 共 3 个
+        String registerBody = """
+        {
+          "username": "alice"
+        }
+        """;
+
+        mockMvc.perform(
+                        post("/api/customers")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(registerBody)
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/customers"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10));
+    }
+
+    @Test
+    void shouldReturnCustomerDetail() throws Exception {
+        mockMvc.perform(get("/api/customers/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("demo_user"));
+    }
+
+    @Test
+    void shouldReturn404WhenCustomerMissing() throws Exception {
+        mockMvc.perform(get("/api/customers/{id}", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value("CUSTOMER_NOT_FOUND"))
+                .andExpect(jsonPath("$.path")
+                        .value("/api/customers/999"));
+    }
+
 }
