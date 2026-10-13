@@ -1,15 +1,22 @@
 package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.customer.Customer;
+import com.xiongbokai.minimall.domain.order.Order;
 import com.xiongbokai.minimall.domain.order.OrderDetail;
-import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
-import com.xiongbokai.minimall.dto.response.PageResponse;
-import com.xiongbokai.minimall.exception.*;
+import com.xiongbokai.minimall.domain.order.OrderItem;
+import com.xiongbokai.minimall.domain.order.OrderItemDetail;
+import com.xiongbokai.minimall.domain.order.OrderStatus;
 import com.xiongbokai.minimall.domain.product.Product;
 import com.xiongbokai.minimall.domain.product.ProductStatus;
+import com.xiongbokai.minimall.dto.request.OrderItemRequest;
+import com.xiongbokai.minimall.dto.response.OrderDetailResponse;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
-import com.xiongbokai.minimall.domain.order.Order;
-import com.xiongbokai.minimall.domain.order.OrderStatus;
+import com.xiongbokai.minimall.dto.response.PageResponse;
+import com.xiongbokai.minimall.exception.CustomerNotFoundException;
+import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
+import com.xiongbokai.minimall.exception.InsufficientStockException;
+import com.xiongbokai.minimall.exception.OrderNotFoundException;
+import com.xiongbokai.minimall.exception.ProductNotFoundException;
 import com.xiongbokai.minimall.repository.CustomerRepository;
 import com.xiongbokai.minimall.repository.OrderRepository;
 import com.xiongbokai.minimall.repository.ProductRepository;
@@ -28,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,19 +55,46 @@ class OrderServiceTest {
     @InjectMocks
     private OrderService orderService;
 
+    private OrderItemRequest item(Long productId, int quantity) {
+        return new OrderItemRequest(productId, quantity);
+    }
+
+    private Product product(
+            Long id,
+            String name,
+            BigDecimal price,
+            int stock
+    ) {
+        return new Product(
+                id, name, price, stock, ProductStatus.ON_SALE
+        );
+    }
+
+    private OrderItem orderItem(
+            Long orderId,
+            Long productId,
+            int quantity,
+            BigDecimal price
+    ) {
+        return new OrderItem(
+                null,
+                orderId,
+                productId,
+                quantity,
+                price,
+                price.multiply(BigDecimal.valueOf(quantity))
+        );
+    }
+
     @Test
-    void shouldPlaceOrderSuccessfully() {
+    void shouldPlaceOrderWithSingleItem() {
         when(customerRepository.findById(1L))
                 .thenReturn(Optional.of(
                         new Customer(1L, "demo_user")
                 ));
 
-        Product product = new Product(
-                1L,
-                "机械键盘",
-                new BigDecimal("399.00"),
-                100,
-                ProductStatus.ON_SALE
+        Product product = product(
+                1L, "机械键盘", new BigDecimal("399.00"), 100
         );
 
         when(productRepository.findById(1L))
@@ -68,28 +103,28 @@ class OrderServiceTest {
                 .thenReturn(true);
 
         Order savedOrder = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.CREATED,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.CREATED
         );
 
-        when(orderRepository.save(any(Order.class)))
+        when(orderRepository.save(any(Order.class), anyList()))
                 .thenReturn(savedOrder);
 
-        OrderResponse response = orderService.placeOrder(1L, 1L, 2);
+        OrderResponse response =
+                orderService.placeOrder(1L, List.of(item(1L, 2)));
 
         ArgumentCaptor<Order> orderCaptor =
                 ArgumentCaptor.forClass(Order.class);
+        ArgumentCaptor<List<OrderItem>> itemsCaptor =
+                ArgumentCaptor.forClass(List.class);
 
-        verify(orderRepository).save(orderCaptor.capture());
+        verify(orderRepository).save(
+                orderCaptor.capture(),
+                itemsCaptor.capture()
+        );
 
         Order orderToCreate = orderCaptor.getValue();
 
-        assertEquals(1L, orderToCreate.productId());
-        assertEquals(2, orderToCreate.quantity());
+        assertEquals(1L, orderToCreate.buyerId());
         assertEquals(
                 new BigDecimal("798.00"),
                 orderToCreate.totalAmount()
@@ -99,11 +134,101 @@ class OrderServiceTest {
                 orderToCreate.status()
         );
 
+        // 明细：1 件商品，小计 = 399×2
+        assertEquals(1, itemsCaptor.getValue().size());
+        assertEquals(1L, itemsCaptor.getValue().get(0).productId());
+        assertEquals(2, itemsCaptor.getValue().get(0).quantity());
+        assertEquals(
+                new BigDecimal("399.00"),
+                itemsCaptor.getValue().get(0).price()
+        );
+        assertEquals(
+                new BigDecimal("798.00"),
+                itemsCaptor.getValue().get(0).subtotal()
+        );
+
         assertEquals(10L, response.id());
         assertEquals(
                 new BigDecimal("798.00"),
                 response.totalAmount()
         );
+    }
+
+    @Test
+    void shouldPlaceOrderWithMultipleItems() {
+        when(customerRepository.findById(1L))
+                .thenReturn(Optional.of(
+                        new Customer(1L, "demo_user")
+                ));
+
+        Product keyboard = product(
+                1L, "机械键盘", new BigDecimal("399.00"), 100
+        );
+        Product stand = product(
+                3L, "显示器支架", new BigDecimal("259.00"), 100
+        );
+
+        when(productRepository.findById(1L))
+                .thenReturn(Optional.of(keyboard));
+        when(productRepository.findById(3L))
+                .thenReturn(Optional.of(stand));
+        when(productRepository.deductStock(1L, 2))
+                .thenReturn(true);
+        when(productRepository.deductStock(3L, 1))
+                .thenReturn(true);
+
+        Order savedOrder = new Order(
+                10L, 1L, new BigDecimal("1057.00"), OrderStatus.CREATED
+        );
+
+        when(orderRepository.save(any(Order.class), anyList()))
+                .thenReturn(savedOrder);
+
+        OrderResponse response = orderService.placeOrder(
+                1L,
+                List.of(item(1L, 2), item(3L, 1))
+        );
+
+        // 两件商品都被扣库存
+        verify(productRepository).deductStock(1L, 2);
+        verify(productRepository).deductStock(3L, 1);
+
+        // 总额 = 399×2 + 259×1 = 1057
+        assertEquals(
+                new BigDecimal("1057.00"),
+                response.totalAmount()
+        );
+
+        ArgumentCaptor<List<OrderItem>> itemsCaptor =
+                ArgumentCaptor.forClass(List.class);
+
+        verify(orderRepository).save(
+                any(Order.class),
+                itemsCaptor.capture()
+        );
+
+        assertEquals(2, itemsCaptor.getValue().size());
+        assertEquals(
+                new BigDecimal("798.00"),
+                itemsCaptor.getValue().get(0).subtotal()
+        );
+        assertEquals(
+                new BigDecimal("259.00"),
+                itemsCaptor.getValue().get(1).subtotal()
+        );
+    }
+
+    @Test
+    void shouldRejectOrderWhenItemsEmpty() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.placeOrder(1L, List.of())
+        );
+
+        verify(productRepository, never())
+                .findById(any());
+        verify(orderRepository, never())
+                .save(any(), anyList());
     }
 
     @Test
@@ -118,13 +243,16 @@ class OrderServiceTest {
 
         assertThrows(
                 ProductNotFoundException.class,
-                () -> orderService.placeOrder(1L, 999L, 1)
+                () -> orderService.placeOrder(
+                        1L,
+                        List.of(item(999L, 1))
+                )
         );
 
         verify(productRepository, never())
                 .deductStock(any(), anyInt());
         verify(orderRepository, never())
-                .save(any(Order.class));
+                .save(any(), anyList());
     }
 
     @Test
@@ -134,12 +262,8 @@ class OrderServiceTest {
                         new Customer(1L, "demo_user")
                 ));
 
-        Product product = new Product(
-                2L,
-                "无线鼠标",
-                new BigDecimal("129.00"),
-                1,
-                ProductStatus.OUT_OF_STOCK
+        Product product = product(
+                2L, "无线鼠标", new BigDecimal("129.00"), 1
         );
 
         when(productRepository.findById(2L))
@@ -149,37 +273,28 @@ class OrderServiceTest {
 
         assertThrows(
                 InsufficientStockException.class,
-                () -> orderService.placeOrder(1L, 2L, 5)
+                () -> orderService.placeOrder(
+                        1L,
+                        List.of(item(2L, 5))
+                )
         );
 
         verify(orderRepository, never())
-                .save(any(Order.class));
-    }
-
-    @Test
-    void shouldRejectOrderWhenQuantityIsLessThanOne() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> orderService.placeOrder(1L, 1L, 0)
-        );
-
-        verify(productRepository, never())
-                .findById(any());
+                .save(any(), anyList());
     }
 
     @Test
     void shouldCancelCreatedOrderAndRestock() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.CREATED,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.CREATED
         );
 
         when(orderRepository.findById(10L))
                 .thenReturn(Optional.of(order));
+        when(orderRepository.findItemsByOrderId(10L))
+                .thenReturn(List.of(
+                        orderItem(10L, 1L, 2, new BigDecimal("399.00"))
+                ));
         when(productRepository.restock(1L, 2))
                 .thenReturn(true);
         when(orderRepository.updateStatus(
@@ -188,12 +303,15 @@ class OrderServiceTest {
 
         OrderResponse response = orderService.cancel(10L);
 
+        // 按明细还库存
         verify(productRepository).restock(1L, 2);
         verify(orderRepository).updateStatus(
                 10L, OrderStatus.CANCELLED
         );
-        assertEquals(OrderStatus.CANCELLED.name(),
-                response.status().name());
+        assertEquals(
+                OrderStatus.CANCELLED.name(),
+                response.status().name()
+        );
     }
 
     @Test
@@ -215,12 +333,7 @@ class OrderServiceTest {
     @Test
     void shouldRejectCancelWhenOrderAlreadyCancelled() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.CANCELLED,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.CANCELLED
         );
 
         when(orderRepository.findById(10L))
@@ -240,12 +353,7 @@ class OrderServiceTest {
     @Test
     void shouldRejectCancelWhenOrderPaid() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.PAID,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.PAID
         );
 
         when(orderRepository.findById(10L))
@@ -263,12 +371,7 @@ class OrderServiceTest {
     @Test
     void shouldPayCreatedOrder() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.CREATED,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.CREATED
         );
 
         when(orderRepository.findById(10L))
@@ -279,8 +382,10 @@ class OrderServiceTest {
         OrderResponse response = orderService.pay(10L);
 
         verify(orderRepository).updateStatus(10L, OrderStatus.PAID);
-        assertEquals(OrderStatus.PAID.name(),
-                response.status().name());
+        assertEquals(
+                OrderStatus.PAID.name(),
+                response.status().name()
+        );
     }
 
     @Test
@@ -300,12 +405,7 @@ class OrderServiceTest {
     @Test
     void shouldRejectPayWhenOrderAlreadyPaid() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.PAID,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.PAID
         );
 
         when(orderRepository.findById(10L))
@@ -323,12 +423,7 @@ class OrderServiceTest {
     @Test
     void shouldRejectPayWhenOrderCancelled() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.CANCELLED,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.CANCELLED
         );
 
         when(orderRepository.findById(10L))
@@ -345,20 +440,24 @@ class OrderServiceTest {
 
     @Test
     void shouldReturnFirstPage() {
-        when(orderRepository.count(null,null)).thenReturn(15L);
+        when(orderRepository.count(null, null)).thenReturn(15L);
         when(orderRepository.findPage(null, null, 0, 10)).thenReturn(
                 List.of(
-                        new Order(1L, 1L, 1,
+                        new Order(
+                                1L, 1L,
                                 new BigDecimal("399.00"),
-                                OrderStatus.CREATED, 1L),
-                        new Order(2L, 1L, 1,
+                                OrderStatus.CREATED
+                        ),
+                        new Order(
+                                2L, 1L,
                                 new BigDecimal("399.00"),
-                                OrderStatus.CREATED, 1L)
+                                OrderStatus.CREATED
+                        )
                 )
         );
 
         PageResponse<OrderResponse> page =
-                orderService.listOrders(null,null,  0, 10);
+                orderService.listOrders(null, null, 0, 10);
 
         assertEquals(2, page.content().size());
         assertEquals(0, page.page());
@@ -374,9 +473,11 @@ class OrderServiceTest {
         when(orderRepository.count(null, null)).thenReturn(15L);
         when(orderRepository.findPage(null, null, 10, 10)).thenReturn(
                 List.of(
-                        new Order(11L, 1L, 1,
+                        new Order(
+                                11L, 1L,
                                 new BigDecimal("399.00"),
-                                OrderStatus.CREATED, 1L)
+                                OrderStatus.CREATED
+                        )
                 )
         );
 
@@ -387,7 +488,6 @@ class OrderServiceTest {
         assertEquals(1, page.page());
         assertEquals(2, page.totalPages());
 
-        // 关键：第二页的 OFFSET 必须是 10
         verify(orderRepository).findPage(null, null, 10, 10);
     }
 
@@ -420,10 +520,9 @@ class OrderServiceTest {
                 OrderStatus.PAID, null, 0, 10
         )).thenReturn(
                 List.of(new Order(
-                        1L, 1L, 1,
+                        1L, 1L,
                         new BigDecimal("399.00"),
-                        OrderStatus.PAID,
-                        1L
+                        OrderStatus.PAID
                 ))
         );
 
@@ -433,7 +532,6 @@ class OrderServiceTest {
         assertEquals(5L, page.totalElements());
         assertEquals(1, page.content().size());
 
-        // 关键：必须带上 status 过滤，不能走全量
         verify(orderRepository)
                 .findPage(OrderStatus.PAID, null, 0, 10);
         verify(orderRepository, never())
@@ -445,73 +543,34 @@ class OrderServiceTest {
         when(orderRepository.count(null, null)).thenReturn(15L);
         when(orderRepository.findPage(null, null, 0, 10)).thenReturn(
                 List.of(new Order(
-                        1L, 1L, 1,
+                        1L, 1L,
                         new BigDecimal("399.00"),
-                        OrderStatus.CREATED,
-                        1L
+                        OrderStatus.CREATED
                 ))
         );
 
         PageResponse<OrderResponse> page =
                 orderService.listOrders(null, null, 0, 10);
 
-        // 关键：没传状态，只能走全量方法
         verify(orderRepository).findPage(null, null, 0, 10);
     }
 
-//    @Test
-//    void shouldReturnOrderDetailWithProductName() {
-//        Order order = new Order(
-//                10L,
-//                1L,
-//                2,
-//                new BigDecimal("798.00"),
-//                OrderStatus.CREATED
-//        );
-//
-//        Product product = new Product(
-//                1L,
-//                "机械键盘",
-//                new BigDecimal("399.00"),
-//                100,
-//                ProductStatus.ON_SALE
-//        );
-//
-//        when(orderRepository.findById(10L))
-//                .thenReturn(Optional.of(order));
-//        when(productRepository.findById(1L))
-//                .thenReturn(Optional.of(product));
-//
-//        OrderDetailResponse detail =
-//                orderService.getOrderDetail(10L);
-//
-//        assertEquals("机械键盘", detail.productName());
-//        assertEquals(2, detail.quantity());
-//        assertEquals(new BigDecimal("798.00"),
-//                detail.totalAmount());
-//        assertEquals(OrderStatus.CREATED, detail.status());
-//    }
-
     @Test
-    void shouldReturnOrderDetailWithProductName() {
-//        OrderDetail detail = new OrderDetail(
-//                10L,
-//                1L,
-//                "机械键盘",
-//                2,
-//                new BigDecimal("798.00"),
-//                OrderStatus.CREATED
-//        );
-
+    void shouldReturnOrderDetailWithItems() {
         OrderDetail detail = new OrderDetail(
                 10L,
                 1L,
-                "机械键盘",
-                2,
+                "demo_user",
                 new BigDecimal("798.00"),
                 OrderStatus.CREATED,
-                1L,
-                "demo_user"
+                List.of(new OrderItemDetail(
+                        1L,
+                        1L,
+                        "机械键盘",
+                        2,
+                        new BigDecimal("399.00"),
+                        new BigDecimal("798.00")
+                ))
         );
 
         when(orderRepository.findDetailById(10L))
@@ -520,28 +579,17 @@ class OrderServiceTest {
         OrderDetailResponse response =
                 orderService.getOrderDetail(10L);
 
-        assertEquals("机械键盘", response.productName());
-        assertEquals(2, response.quantity());
-        assertEquals(new BigDecimal("798.00"),
-                response.totalAmount());
+        assertEquals("机械键盘",
+                response.items().get(0).productName());
+        assertEquals(2, response.items().get(0).quantity());
+        assertEquals(
+                new BigDecimal("798.00"),
+                response.totalAmount()
+        );
         assertEquals(OrderStatus.CREATED, response.status());
         assertEquals("demo_user", response.buyerName());
+        assertEquals(1, response.items().size());
     }
-
-
-//    @Test
-//    void shouldThrowWhenOrderMissingForDetail() {
-//        when(orderRepository.findById(999L))
-//                .thenReturn(Optional.empty());
-//
-//        assertThrows(
-//                OrderNotFoundException.class,
-//                () -> orderService.getOrderDetail(999L)
-//        );
-//
-//        // 订单都没有，就不该再查商品
-//        verify(productRepository, never()).findById(any());
-//    }
 
     @Test
     void shouldThrowWhenOrderMissingForDetail() {
@@ -557,16 +605,15 @@ class OrderServiceTest {
     @Test
     void shouldRefundPaidOrderAndRestock() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.PAID,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.PAID
         );
 
         when(orderRepository.findById(10L))
                 .thenReturn(Optional.of(order));
+        when(orderRepository.findItemsByOrderId(10L))
+                .thenReturn(List.of(
+                        orderItem(10L, 1L, 2, new BigDecimal("399.00"))
+                ));
         when(productRepository.restock(1L, 2))
                 .thenReturn(true);
         when(orderRepository.updateStatus(
@@ -579,8 +626,10 @@ class OrderServiceTest {
         verify(orderRepository).updateStatus(
                 10L, OrderStatus.REFUNDED
         );
-        assertEquals(OrderStatus.REFUNDED.name(),
-                response.status().name());
+        assertEquals(
+                OrderStatus.REFUNDED.name(),
+                response.status().name()
+        );
     }
 
     @Test
@@ -602,12 +651,7 @@ class OrderServiceTest {
     @Test
     void shouldRejectRefundWhenOrderCreated() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.CREATED,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.CREATED
         );
 
         when(orderRepository.findById(10L))
@@ -627,12 +671,7 @@ class OrderServiceTest {
     @Test
     void shouldRejectRefundWhenOrderAlreadyRefunded() {
         Order order = new Order(
-                10L,
-                1L,
-                2,
-                new BigDecimal("798.00"),
-                OrderStatus.REFUNDED,
-                1L
+                10L, 1L, new BigDecimal("798.00"), OrderStatus.REFUNDED
         );
 
         when(orderRepository.findById(10L))
@@ -656,13 +695,16 @@ class OrderServiceTest {
 
         assertThrows(
                 CustomerNotFoundException.class,
-                () -> orderService.placeOrder(999L, 1L, 1)
+                () -> orderService.placeOrder(
+                        999L,
+                        List.of(item(1L, 1))
+                )
         );
 
         verify(productRepository, never())
                 .findById(any());
         verify(orderRepository, never())
-                .save(any());
+                .save(any(), anyList());
     }
 
     @Test
@@ -671,10 +713,9 @@ class OrderServiceTest {
         when(orderRepository.findPage(null, 1L, 0, 10))
                 .thenReturn(
                         List.of(new Order(
-                                1L, 1L, 1,
+                                1L, 1L,
                                 new BigDecimal("399.00"),
-                                OrderStatus.CREATED,
-                                1L
+                                OrderStatus.CREATED
                         ))
                 );
 
@@ -695,10 +736,9 @@ class OrderServiceTest {
                 OrderStatus.PAID, 1L, 0, 10
         )).thenReturn(
                 List.of(new Order(
-                        1L, 1L, 1,
+                        1L, 1L,
                         new BigDecimal("399.00"),
-                        OrderStatus.PAID,
-                        1L
+                        OrderStatus.PAID
                 ))
         );
 
@@ -709,7 +749,6 @@ class OrderServiceTest {
 
         assertEquals(2L, page.totalElements());
 
-        // 组合条件必须原样传到 Repository
         verify(orderRepository)
                 .count(OrderStatus.PAID, 1L);
         verify(orderRepository)

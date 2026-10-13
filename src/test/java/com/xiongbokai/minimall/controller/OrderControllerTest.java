@@ -30,20 +30,36 @@ class OrderControllerTest {
         this.mockMvc = mockMvc;
     }
 
-    @Test
-    void shouldPlaceOrder() throws Exception {
-        String requestBody = """
+    // 下单：买家 1 买 2 件机械键盘（399×2 = 798）
+    private String placeKeyboard2() {
+        return """
             {
               "buyerId": 1,
-              "productId": 1,
-              "quantity": 2
+              "items": [
+                {"productId": 1, "quantity": 2}
+              ]
             }
             """;
+    }
 
+    // 下单：买家 1 买 1 件机械键盘
+    private String placeKeyboard1() {
+        return """
+            {
+              "buyerId": 1,
+              "items": [
+                {"productId": 1, "quantity": 1}
+              ]
+            }
+            """;
+    }
+
+    @Test
+    void shouldPlaceOrder() throws Exception {
         mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(requestBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andExpect(
@@ -52,8 +68,7 @@ class OrderControllerTest {
                         )
                 )
                 .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.productId").value(1))
-                .andExpect(jsonPath("$.quantity").value(2))
+                .andExpect(jsonPath("$.buyerId").value(1))
                 .andExpect(jsonPath("$.totalAmount").value(798.00))
                 .andExpect(jsonPath("$.status").value("CREATED"));
 
@@ -63,12 +78,65 @@ class OrderControllerTest {
     }
 
     @Test
+    void shouldPlaceOrderWithMultipleItems() throws Exception {
+        // 一单两件：机械键盘 399 + 显示器支架 259 = 658
+        String requestBody = """
+            {
+              "buyerId": 1,
+              "items": [
+                {"productId": 1, "quantity": 1},
+                {"productId": 3, "quantity": 1}
+              ]
+            }
+            """;
+
+        mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalAmount").value(658.00))
+                .andExpect(jsonPath("$.status").value("CREATED"));
+
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1));
+    }
+
+    @Test
+    void shouldRejectEmptyItems() throws Exception {
+        String requestBody = """
+            {
+              "buyerId": 1,
+              "items": []
+            }
+            """;
+
+        mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.path").value("/api/orders"));
+
+        // 校验失败不允许残留任何订单
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0));
+    }
+
+    @Test
     void shouldReturnErrorWhenStockIsInsufficient() throws Exception {
         String requestBody = """
             {
               "buyerId": 1,
-              "productId": 2,
-              "quantity": 1
+              "items": [
+                {"productId": 2, "quantity": 1}
+              ]
             }
             """;
 
@@ -93,8 +161,9 @@ class OrderControllerTest {
         String requestBody = """
             {
               "buyerId": 1,
-              "productId": 999,
-              "quantity": 1
+              "items": [
+                {"productId": 999, "quantity": 1}
+              ]
             }
             """;
 
@@ -115,8 +184,9 @@ class OrderControllerTest {
         String requestBody = """
             {
               "buyerId": 1,
-              "productId": 1,
-              "quantity": 0
+              "items": [
+                {"productId": 1, "quantity": 0}
+              ]
             }
             """;
 
@@ -127,29 +197,15 @@ class OrderControllerTest {
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code")
-                        .value("VALIDATION_FAILED"))
-                .andExpect(
-                        jsonPath("$.message").value(
-                                "参数校验失败，字段: quantity，原因: 购买数量必须大于0"
-                        )
-                );
+                        .value("VALIDATION_FAILED"));
     }
 
     @Test
     void shouldCancelOrderAndRestoreStock() throws Exception {
-        // 先下单
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -160,7 +216,6 @@ class OrderControllerTest {
         );
 
         Long orderId = orderIdNumber.longValue();
-
 
         // 取消
         mockMvc.perform(
@@ -195,18 +250,10 @@ class OrderControllerTest {
 
     @Test
     void shouldRejectCancellingOrderTwice() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -217,7 +264,6 @@ class OrderControllerTest {
         );
 
         Long orderId = orderIdNumber.longValue();
-
 
         // 第一次取消成功
         mockMvc.perform(
@@ -241,18 +287,10 @@ class OrderControllerTest {
 
     @Test
     void shouldPayOrder() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -290,18 +328,10 @@ class OrderControllerTest {
 
     @Test
     void shouldRejectPayingOrderTwice() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -334,20 +364,11 @@ class OrderControllerTest {
 
     @Test
     void shouldReturnDefaultFirstPage() throws Exception {
-        // 先建 3 笔订单
         for (int i = 0; i < 3; i++) {
-            String placeBody = """
-            {
-              "buyerId": 1,
-              "productId": 1,
-              "quantity": 1
-            }
-            """;
-
             mockMvc.perform(
                             post("/api/orders")
                                     .contentType(MediaType.APPLICATION_JSON)
-                                    .content(placeBody)
+                                    .content(placeKeyboard1())
                     )
                     .andExpect(status().isCreated());
         }
@@ -365,18 +386,10 @@ class OrderControllerTest {
     @Test
     void shouldReturnRequestedPage() throws Exception {
         for (int i = 0; i < 3; i++) {
-            String placeBody = """
-            {
-              "buyerId": 1,
-              "productId": 1,
-              "quantity": 1
-            }
-            """;
-
             mockMvc.perform(
                             post("/api/orders")
                                     .contentType(MediaType.APPLICATION_JSON)
-                                    .content(placeBody)
+                                    .content(placeKeyboard1())
                     )
                     .andExpect(status().isCreated());
         }
@@ -409,25 +422,17 @@ class OrderControllerTest {
 
     @Test
     void shouldFilterOrdersByStatus() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 1
-        }
-        """;
-
         // 第一单：CREATED
         mockMvc.perform(post("/api/orders")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeBody))
+                        .content(placeKeyboard1()))
                 .andExpect(status().isCreated());
 
         // 第二单：下单后支付，变 PAID
         MvcResult secondPlace = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard1())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -460,25 +465,17 @@ class OrderControllerTest {
 
     @Test
     void shouldReturnAllOrdersWhenStatusAbsent() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 1
-        }
-        """;
-
         // 建 1 笔 CREATED
         mockMvc.perform(post("/api/orders")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeBody))
+                        .content(placeKeyboard1()))
                 .andExpect(status().isCreated());
 
         // 建 1 笔 PAID
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard1())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -510,18 +507,10 @@ class OrderControllerTest {
 
     @Test
     void shouldReturnOrderDetail() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -532,15 +521,19 @@ class OrderControllerTest {
         );
         Long orderId = orderIdNumber.longValue();
 
-        // 查详情：订单信息 + 商品名都在
+        // 查详情：订单信息 + 明细里的商品名都在
         mockMvc.perform(get("/api/orders/{id}", orderId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(orderId))
-                .andExpect(jsonPath("$.productId").value(1))
-                .andExpect(jsonPath("$.productName").value("机械键盘"))
-                .andExpect(jsonPath("$.quantity").value(2))
+                .andExpect(jsonPath("$.buyerId").value(1))
                 .andExpect(jsonPath("$.totalAmount").value(798.00))
-                .andExpect(jsonPath("$.status").value("CREATED"));
+                .andExpect(jsonPath("$.status").value("CREATED"))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].productId").value(1))
+                .andExpect(jsonPath("$.items[0].productName").value("机械键盘"))
+                .andExpect(jsonPath("$.items[0].quantity").value(2))
+                .andExpect(jsonPath("$.items[0].price").value(399.00))
+                .andExpect(jsonPath("$.items[0].subtotal").value(798.00));
     }
 
     @Test
@@ -553,19 +546,11 @@ class OrderControllerTest {
 
     @Test
     void shouldRefundPaidOrder() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         // 下单 + 支付
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -595,19 +580,11 @@ class OrderControllerTest {
 
     @Test
     void shouldRejectRefundingCreatedOrder() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         // 只下单不支付：状态 CREATED
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -637,8 +614,9 @@ class OrderControllerTest {
         String requestBody = """
         {
           "buyerId": 999,
-          "productId": 1,
-          "quantity": 1
+          "items": [
+            {"productId": 1, "quantity": 1}
+          ]
         }
         """;
 
@@ -655,18 +633,10 @@ class OrderControllerTest {
 
     @Test
     void shouldReturnOrderDetailWithBuyerName() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 2
-        }
-        """;
-
         MvcResult placeResult = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(placeBody)
+                                .content(placeKeyboard2())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -686,26 +656,19 @@ class OrderControllerTest {
 
     @Test
     void shouldFilterOrdersByBuyer() throws Exception {
-        String placeBody = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 1
-        }
-        """;
-
         // 买家 1 下一单
         mockMvc.perform(post("/api/orders")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeBody))
+                        .content(placeKeyboard1()))
                 .andExpect(status().isCreated());
 
         // 买家 2 下一单
         String buyer2Body = """
         {
           "buyerId": 2,
-          "productId": 1,
-          "quantity": 1
+          "items": [
+            {"productId": 1, "quantity": 1}
+          ]
         }
         """;
 
@@ -726,18 +689,10 @@ class OrderControllerTest {
     @Test
     void shouldFilterOrdersByStatusAndBuyerTogether() throws Exception {
         // 买家 1：先下一单（CREATED）
-        String body = """
-        {
-          "buyerId": 1,
-          "productId": 1,
-          "quantity": 1
-        }
-        """;
-
         MvcResult firstPlace = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(body)
+                                .content(placeKeyboard1())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -746,7 +701,7 @@ class OrderControllerTest {
         MvcResult secondPlace = mockMvc.perform(
                         post("/api/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(body)
+                                .content(placeKeyboard1())
                 )
                 .andExpect(status().isCreated())
                 .andReturn();

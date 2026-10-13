@@ -1,7 +1,7 @@
 package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.order.OrderStatus;
-import com.xiongbokai.minimall.domain.order.Order;
+import com.xiongbokai.minimall.dto.request.OrderItemRequest;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
 import com.xiongbokai.minimall.dto.response.PageResponse;
 import com.xiongbokai.minimall.repository.OrderRepository;
@@ -11,7 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -28,15 +28,12 @@ class OrderPaginationIntegrationTest {
 
     @Test
     void shouldSplitOrdersIntoPages() {
+        // 直接落库 15 笔一单一件的订单
         for (int i = 1; i <= 15; i++) {
-            orderRepository.save(new Order(
-                    null,
+            orderService.placeOrder(
                     1L,
-                    1,
-                    new BigDecimal("399.00"),
-                    OrderStatus.CREATED,
-                    1L
-            ));
+                    List.of(new OrderItemRequest(1L, 1))
+            );
         }
 
         PageResponse<OrderResponse> firstPage =
@@ -47,7 +44,7 @@ class OrderPaginationIntegrationTest {
         assertEquals(2, firstPage.totalPages());
 
         PageResponse<OrderResponse> secondPage =
-                orderService.listOrders(null,null, 1, 10);
+                orderService.listOrders(null, null, 1, 10);
 
         assertEquals(5, secondPage.content().size());
     }
@@ -66,12 +63,18 @@ class OrderPaginationIntegrationTest {
     void shouldFilterOrdersByStatusWithPagination() {
         // 3 笔 CREATED
         for (int i = 0; i < 3; i++) {
-            orderService.placeOrder(1L, 1L, 1);
+            orderService.placeOrder(
+                    1L,
+                    List.of(new OrderItemRequest(1L, 1))
+            );
         }
 
         // 2 笔 PAID（下单后支付）
         for (int i = 0; i < 2; i++) {
-            OrderResponse placed = orderService.placeOrder(1L, 1L, 1);
+            OrderResponse placed = orderService.placeOrder(
+                    1L,
+                    List.of(new OrderItemRequest(1L, 1))
+            );
             orderService.pay(placed.id());
         }
 
@@ -94,12 +97,21 @@ class OrderPaginationIntegrationTest {
     @Test
     void shouldFilterMyOrdersByBuyerAndStatus() {
         // 买家 1：2 笔（1 CREATED + 1 PAID）
-        orderService.placeOrder(1L, 1L, 1);
-        OrderResponse paid = orderService.placeOrder(1L, 1L, 1);
+        orderService.placeOrder(
+                1L,
+                List.of(new OrderItemRequest(1L, 1))
+        );
+        OrderResponse paid = orderService.placeOrder(
+                1L,
+                List.of(new OrderItemRequest(1L, 1))
+        );
         orderService.pay(paid.id());
 
         // 买家 2：1 笔
-        orderService.placeOrder(2L, 1L, 1);
+        orderService.placeOrder(
+                2L,
+                List.of(new OrderItemRequest(1L, 1))
+        );
 
         // 买家 1 的全部订单
         PageResponse<OrderResponse> myOrders =

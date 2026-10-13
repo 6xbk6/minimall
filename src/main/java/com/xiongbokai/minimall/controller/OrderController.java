@@ -24,14 +24,28 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+//    @PostMapping
+//    public ResponseEntity<OrderResponse> placeOrder(
+//            @Valid @RequestBody OrderCreateRequest request
+//    ) {
+//        OrderResponse response = orderService.placeOrder(
+//                request.buyerId(),
+//                request.productId(),
+//                request.quantity()
+//        );
+//
+//        return ResponseEntity
+//                .status(HttpStatus.CREATED)
+//                .body(response);
+//    }
+
     @PostMapping
     public ResponseEntity<OrderResponse> placeOrder(
             @Valid @RequestBody OrderCreateRequest request
     ) {
         OrderResponse response = orderService.placeOrder(
                 request.buyerId(),
-                request.productId(),
-                request.quantity()
+                request.items()
         );
 
         return ResponseEntity

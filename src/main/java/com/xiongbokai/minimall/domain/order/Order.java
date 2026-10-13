@@ -4,10 +4,8 @@ import java.math.BigDecimal;
 
 public record Order(
         Long id,
-        Long productId,
-        int quantity,
+        Long buyerId,
         BigDecimal totalAmount,
-        OrderStatus status,
-        Long buyerId
+        OrderStatus status
 ) {
 }

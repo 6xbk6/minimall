@@ -1,6 +1,7 @@
 package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.order.OrderStatus;
+import com.xiongbokai.minimall.dto.request.OrderItemRequest;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
 import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,7 +30,10 @@ class OrderRefundIntegrationTest {
     @Test
     void shouldRestoreStockAndRefundPaidOrderTogether() {
         // 下单 + 支付：库存 100 → 97
-        OrderResponse placed = orderService.placeOrder(1L, 1L, 3);
+        OrderResponse placed = orderService.placeOrder(
+                1L,
+                List.of(new OrderItemRequest(1L, 3))
+        );
         orderService.pay(placed.id());
 
         // 退款
@@ -55,7 +61,10 @@ class OrderRefundIntegrationTest {
     @Test
     void shouldNotRefundCreatedOrderAndKeepStockUnchanged() {
         // 只下单不支付：库存 100 → 98，状态 CREATED
-        OrderResponse placed = orderService.placeOrder(1L, 1L, 2);
+        OrderResponse placed = orderService.placeOrder(
+                1L,
+                List.of(new OrderItemRequest(1L, 2))
+        );
 
         assertThrows(
                 IllegalOrderStatusException.class,

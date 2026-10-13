@@ -2,6 +2,8 @@ package com.xiongbokai.minimall.repository;
 
 import com.xiongbokai.minimall.domain.order.Order;
 import com.xiongbokai.minimall.domain.order.OrderDetail;
+import com.xiongbokai.minimall.domain.order.OrderItem;
+import com.xiongbokai.minimall.domain.order.OrderItemDetail;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -24,38 +26,57 @@ public class JdbcOrderRepository implements OrderRepository {
             rowNumber
     ) -> new Order(
             resultSet.getLong("id"),
-            resultSet.getLong("product_id"),
-            resultSet.getInt("quantity"),
+            resultSet.getLong("buyer_id"),
             resultSet.getBigDecimal("total_amount"),
-            OrderStatus.valueOf(resultSet.getString("status")),
-            resultSet.getLong("buyer_id")
+            OrderStatus.valueOf(resultSet.getString("status"))
     );
 
-    private final RowMapper<OrderDetail> orderDetailRowMapper = (
+    private final RowMapper<OrderItem> orderItemRowMapper = (
             resultSet,
             rowNumber
-    ) -> new OrderDetail(
+    ) -> new OrderItem(
+            resultSet.getLong("id"),
+            resultSet.getLong("order_id"),
+            resultSet.getLong("product_id"),
+            resultSet.getInt("quantity"),
+            resultSet.getBigDecimal("price"),
+            resultSet.getBigDecimal("subtotal")
+    );
+
+    private final RowMapper<OrderItemDetail> orderItemDetailRowMapper = (
+            resultSet,
+            rowNumber
+    ) -> new OrderItemDetail(
             resultSet.getLong("id"),
             resultSet.getLong("product_id"),
             resultSet.getString("product_name"),
             resultSet.getInt("quantity"),
-            resultSet.getBigDecimal("total_amount"),
-            OrderStatus.valueOf(resultSet.getString("status")),
-            resultSet.getLong("buyer_id"),
-            resultSet.getString("buyer_name")
-
+            resultSet.getBigDecimal("price"),
+            resultSet.getBigDecimal("subtotal")
     );
 
+    private final RowMapper<OrderDetail> orderDetailHeaderRowMapper = (
+            resultSet,
+            rowNumber
+    ) -> new OrderDetail(
+            resultSet.getLong("id"),
+            resultSet.getLong("buyer_id"),
+            resultSet.getString("buyer_name"),
+            resultSet.getBigDecimal("total_amount"),
+            OrderStatus.valueOf(resultSet.getString("status")),
+            null
+    );
 
     public JdbcOrderRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public Order save(Order order) {
-        String sql = """
-                INSERT INTO purchase_order
-                    (product_id, buyer_id, quantity, total_amount, status)
-                VALUES (?, ?, ?, ?, ?)
+    @Override
+    public Order save(Order order, List<OrderItem> items) {
+        // 第 1 步：插订单头，拿回自增 id
+        String orderSql = """
+                INSERT INTO purchase_order (buyer_id, total_amount, status)
+                VALUES (?, ?, ?)
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -64,15 +85,13 @@ public class JdbcOrderRepository implements OrderRepository {
                 connection -> {
                     PreparedStatement statement =
                             connection.prepareStatement(
-                                    sql,
+                                    orderSql,
                                     new String[]{"id"}
                             );
 
-                    statement.setLong(1, order.productId());
-                    statement.setLong(2, order.buyerId());
-                    statement.setInt(3, order.quantity());
-                    statement.setBigDecimal(4, order.totalAmount());
-                    statement.setString(5, order.status().name());
+                    statement.setLong(1, order.buyerId());
+                    statement.setBigDecimal(2, order.totalAmount());
+                    statement.setString(3, order.status().name());
 
                     return statement;
                 },
@@ -93,19 +112,44 @@ public class JdbcOrderRepository implements OrderRepository {
             );
         }
 
+        Long orderId = generatedId.longValue();
+
+        // 第 2 步：循环插明细（每条明细都挂这个订单 id）
+        String itemSql = """
+                INSERT INTO order_item
+                    (order_id, product_id, quantity, price, subtotal)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+
+        for (OrderItem item : items) {
+            int itemAffectedRows = jdbcTemplate.update(
+                    itemSql,
+                    orderId,
+                    item.productId(),
+                    item.quantity(),
+                    item.price(),
+                    item.subtotal()
+            );
+
+            if (itemAffectedRows != 1) {
+                throw new IllegalStateException(
+                        "创建订单明细失败，商品id： " + item.productId()
+                );
+            }
+        }
+
         return new Order(
-                generatedId.longValue(),
-                order.productId(),
-                order.quantity(),
+                orderId,
+                order.buyerId(),
                 order.totalAmount(),
-                order.status(),
-                order.buyerId()
+                order.status()
         );
     }
 
+    @Override
     public Optional<Order> findById(Long id) {
         String sql = """
-                SELECT id, product_id, buyer_id, quantity, total_amount, status
+                SELECT id, buyer_id, total_amount, status
                 FROM purchase_order
                 WHERE id = ?
                 """;
@@ -119,9 +163,26 @@ public class JdbcOrderRepository implements OrderRepository {
         return orders.stream().findFirst();
     }
 
+    @Override
+    public List<OrderItem> findItemsByOrderId(Long orderId) {
+        String sql = """
+                SELECT id, order_id, product_id, quantity, price, subtotal
+                FROM order_item
+                WHERE order_id = ?
+                ORDER BY id
+                """;
+
+        return jdbcTemplate.query(
+                sql,
+                orderItemRowMapper,
+                orderId
+        );
+    }
+
+    @Override
     public List<Order> findAll() {
         String sql = """
-                SELECT id, product_id, buyer_id, quantity, total_amount, status
+                SELECT id, buyer_id, total_amount, status
                 FROM purchase_order
                 ORDER BY id
                 """;
@@ -146,80 +207,6 @@ public class JdbcOrderRepository implements OrderRepository {
         return affectedRows == 1;
     }
 
-//    @Override
-//    public List<Order> findPage(int offset, int limit) {
-//        String sql = """
-//            SELECT id,
-//                   product_id,
-//                   buyer_id,
-//                   quantity,
-//                   total_amount,
-//                   status
-//            FROM purchase_order
-//            ORDER BY id
-//            LIMIT ?
-//            OFFSET ?
-//            """;
-//
-//        return jdbcTemplate.query(sql, orderRowMapper, limit, offset);
-//
-//    }
-//
-//    @Override
-//    public long count() {
-//        String sql = "SELECT COUNT(*) FROM purchase_order";
-//
-//        Long count = jdbcTemplate.queryForObject(sql, Long.class);
-//
-//        return count == null ? 0L : count;
-//    }
-//
-//    @Override
-//    public List<Order> findPageByStatus(
-//            OrderStatus status,
-//            int offset,
-//            int limit
-//    ) {
-//        String sql = """
-//            SELECT id,
-//                   product_id,
-//                   buyer_id,
-//                   quantity,
-//                   total_amount,
-//                   status
-//            FROM purchase_order
-//            WHERE status = ?
-//            ORDER BY id
-//            LIMIT ?
-//            OFFSET ?
-//            """;
-//
-//        return jdbcTemplate.query(
-//                sql,
-//                orderRowMapper,
-//                status.name(),
-//                limit,
-//                offset
-//        );
-//    }
-//
-//    @Override
-//    public long countByStatus(OrderStatus status) {
-//        String sql = """
-//            SELECT COUNT(*)
-//            FROM purchase_order
-//            WHERE status = ?
-//            """;
-//
-//        Long count = jdbcTemplate.queryForObject(
-//                sql,
-//                Long.class,
-//                status.name()
-//        );
-//
-//        return count == null ? 0L : count;
-//    }
-
     @Override
     public List<Order> findPage(
             OrderStatus status,
@@ -228,7 +215,7 @@ public class JdbcOrderRepository implements OrderRepository {
             int limit
     ) {
         StringBuilder sql = new StringBuilder("""
-            SELECT id, product_id, buyer_id, quantity, total_amount, status
+            SELECT id, buyer_id, total_amount, status
             FROM purchase_order
             WHERE 1 = 1
             """);
@@ -285,31 +272,60 @@ public class JdbcOrderRepository implements OrderRepository {
         return count == null ? 0L : count;
     }
 
-
     @Override
     public Optional<OrderDetail> findDetailById(Long id) {
-        String sql = """
+        // 第 1 步：查订单头（JOIN 买家拿名字）
+        String orderSql = """
                 SELECT o.id,
-                       o.product_id,
-                       p.name AS product_name,
-                       o.quantity,
-                       o.total_amount,
-                       o.status,
                        o.buyer_id,
-                       c.username AS buyer_name
+                       c.username AS buyer_name,
+                       o.total_amount,
+                       o.status
                 FROM purchase_order o
-                JOIN product p ON p.id = o.product_id
                 JOIN customer c ON c.id = o.buyer_id
                 WHERE o.id = ?
-            """;
+                """;
 
-        List<OrderDetail> details = jdbcTemplate.query(
-                sql,
-                orderDetailRowMapper,
+        List<OrderDetail> headers = jdbcTemplate.query(
+                orderSql,
+                orderDetailHeaderRowMapper,
                 id
         );
 
-        return details.stream().findFirst();
+        if (headers.isEmpty()) {
+            return Optional.empty();
+        }
+
+        // 第 2 步：查明细（JOIN 商品拿名字）
+        String itemSql = """
+                SELECT i.id,
+                       i.product_id,
+                       p.name AS product_name,
+                       i.quantity,
+                       i.price,
+                       i.subtotal
+                FROM order_item i
+                JOIN product p ON p.id = i.product_id
+                WHERE i.order_id = ?
+                ORDER BY i.id
+                """;
+
+        List<OrderItemDetail> items = jdbcTemplate.query(
+                itemSql,
+                orderItemDetailRowMapper,
+                id
+        );
+
+        OrderDetail header = headers.get(0);
+
+        return Optional.of(new OrderDetail(
+                header.id(),
+                header.buyerId(),
+                header.buyerName(),
+                header.totalAmount(),
+                header.status(),
+                items
+        ));
     }
 
 }

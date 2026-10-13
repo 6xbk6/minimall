@@ -1,6 +1,7 @@
 package com.xiongbokai.minimall.service;
 
 import com.xiongbokai.minimall.domain.order.OrderStatus;
+import com.xiongbokai.minimall.dto.request.OrderItemRequest;
 import com.xiongbokai.minimall.dto.response.OrderResponse;
 import com.xiongbokai.minimall.exception.IllegalOrderStatusException;
 import com.xiongbokai.minimall.repository.OrderRepository;
@@ -10,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,7 +34,10 @@ class OrderCancellationIntegrationTest {
     @Test
     void shouldRestoreStockAndCancelOrderTogether() {
         // 先下单：库存 100 → 97，产生 1 笔订单
-        OrderResponse placedOrder = orderService.placeOrder(1L, 1L, 3);
+        OrderResponse placedOrder = orderService.placeOrder(
+                1L,
+                List.of(new OrderItemRequest(1L, 3))
+        );
 
         Integer stockBeforeCancel = jdbcTemplate.queryForObject(
                 "SELECT stock FROM product WHERE id = 1",
@@ -57,7 +63,10 @@ class OrderCancellationIntegrationTest {
 
     @Test
     void shouldNotCancelPaidOrderAndKeepStockUnchanged() {
-        OrderResponse placedOrder = orderService.placeOrder(1L, 1L, 2);
+        OrderResponse placedOrder = orderService.placeOrder(
+                1L,
+                List.of(new OrderItemRequest(1L, 2))
+        );
 
         // 直接把订单改成 PAID，模拟已支付
         orderRepository.updateStatus(
