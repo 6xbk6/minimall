@@ -28,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -753,6 +754,67 @@ class OrderServiceTest {
                 .count(OrderStatus.PAID, 1L);
         verify(orderRepository)
                 .findPage(OrderStatus.PAID, 1L, 0, 10);
+    }
+
+    @Test
+    void shouldCancelExpiredOrdersInBatch() {
+        when(orderRepository.findCreatedOrderIdsBefore(
+                any(LocalDateTime.class)
+        )).thenReturn(List.of(10L, 11L));
+
+        Order first = new Order(
+                10L, 1L, new BigDecimal("399.00"), OrderStatus.CREATED
+        );
+        Order second = new Order(
+                11L, 1L, new BigDecimal("798.00"), OrderStatus.CREATED
+        );
+
+        when(orderRepository.findById(10L))
+                .thenReturn(Optional.of(first));
+        when(orderRepository.findItemsByOrderId(10L))
+                .thenReturn(List.of(
+                        orderItem(10L, 1L, 1, new BigDecimal("399.00"))
+                ));
+        when(productRepository.restock(1L, 1))
+                .thenReturn(true);
+        when(orderRepository.updateStatus(
+                10L, OrderStatus.CANCELLED))
+                .thenReturn(true);
+
+        when(orderRepository.findById(11L))
+                .thenReturn(Optional.of(second));
+        when(orderRepository.findItemsByOrderId(11L))
+                .thenReturn(List.of(
+                        orderItem(11L, 1L, 2, new BigDecimal("399.00"))
+                ));
+        when(productRepository.restock(1L, 2))
+                .thenReturn(true);
+        when(orderRepository.updateStatus(
+                11L, OrderStatus.CANCELLED))
+                .thenReturn(true);
+
+        int closed = orderService.cancelExpiredOrders(30);
+
+        assertEquals(2, closed);
+        verify(productRepository).restock(1L, 1);
+        verify(productRepository).restock(1L, 2);
+        verify(orderRepository).updateStatus(
+                10L, OrderStatus.CANCELLED);
+        verify(orderRepository).updateStatus(
+                11L, OrderStatus.CANCELLED);
+    }
+
+    @Test
+    void shouldReturnZeroWhenNoExpiredOrders() {
+        when(orderRepository.findCreatedOrderIdsBefore(
+                any(LocalDateTime.class)
+        )).thenReturn(List.of());
+
+        int closed = orderService.cancelExpiredOrders(30);
+
+        assertEquals(0, closed);
+        verify(orderRepository, never()).findById(any());
+        verify(productRepository, never()).restock(any(), anyInt());
     }
 
 }

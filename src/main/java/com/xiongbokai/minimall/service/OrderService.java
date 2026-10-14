@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -169,6 +170,22 @@ public class OrderService {
                 OrderStatus.CANCELLED
         );
     }
+
+    @Transactional
+    public int cancelExpiredOrders(int expireMinutes) {
+        LocalDateTime cutoff =
+                LocalDateTime.now().minusMinutes(expireMinutes);
+
+        List<Long> expiredOrderIds =
+                orderRepository.findCreatedOrderIdsBefore(cutoff);
+
+        for (Long orderId : expiredOrderIds) {
+            cancel(orderId);
+        }
+
+        return expiredOrderIds.size();
+    }
+
 
     @Transactional
     public OrderResponse pay(Long orderId) {

@@ -12,6 +12,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -326,6 +327,22 @@ public class JdbcOrderRepository implements OrderRepository {
                 header.status(),
                 items
         ));
+    }
+
+    @Override
+    public List<Long> findCreatedOrderIdsBefore(LocalDateTime cutoff) {
+        String sql = """
+                SELECT id
+                FROM purchase_order
+                WHERE status = 'CREATED'
+                  AND created_at < ?
+                ORDER BY id
+                """;
+        return jdbcTemplate.query(
+                sql,
+                (resultSet, rowNumber) -> resultSet.getLong("id"),
+                cutoff
+        );
     }
 
 }

@@ -49,6 +49,7 @@ import com.xiongbokai.minimall.domain.order.OrderDetail;
 import com.xiongbokai.minimall.domain.order.OrderItem;
 import com.xiongbokai.minimall.domain.order.OrderStatus;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,6 +62,8 @@ public interface OrderRepository {
     List<OrderItem> findItemsByOrderId(Long orderId);
 
     List<Order> findAll();
+
+    List<Long> findCreatedOrderIdsBefore(LocalDateTime cutoff);
 
     boolean updateStatus(Long id, OrderStatus status);
 
